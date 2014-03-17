@@ -63,8 +63,8 @@ func (p *ProcessorCore) Init(registers int, instructions *InstructionSet) {
 func (p *ProcessorCore) Clone(c chan []int) (q *ProcessorCore, i int) {
 	q = new(ProcessorCore)
 	q.Init(len(p.R), p.InstructionSet)
-	//q.IOController = append(q.IOController, c)
-	//p.IOController = append(p.IOController, c)
+	q.IOController = append(q.IOController, c)
+	p.IOController = append(p.IOController, c)
 	i = len(p.IOController) - 1
 	return
 }
