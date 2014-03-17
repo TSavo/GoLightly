@@ -1,25 +1,24 @@
-package vm
+package golightly
 
 import "testing"
 import "github.com/feyeleanor/slices"
-import . "golightly/test"
 
 func TestIOController(t *testing.T) {
 	NewTest(t).
-	Run("Creation", func(TC *Test) {
+		Run("Creation", func(TC *Test) {
 		i := IOController{}
-		TC.	Identical(len(i), cap(i), 0)
+		TC.Identical(len(i), cap(i), 0)
 
 		i = append(i, make(chan slices.ISlice))
-		TC.	Identical(len(i), cap(i), 1)
+		TC.Identical(len(i), cap(i), 1)
 
 		i = append(i, make(chan slices.ISlice, 256))
-		TC.	Identical(len(i), cap(i), 2)
+		TC.Identical(len(i), cap(i), 2)
 
 		ioc := i.Clone()
-		TC.	Identical(len(ioc), cap(ioc), 2)
+		TC.Identical(len(ioc), cap(ioc), 2)
 	}).
-	Run("Traffic", func(TC *Test) {
+		Run("Traffic", func(TC *Test) {
 		i := IOController{}
 		i = append(i, make(chan slices.ISlice))
 		i = append(i, make(chan slices.ISlice, 256))

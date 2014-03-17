@@ -1,4 +1,4 @@
-package testLightly
+package golightly
 
 import "fmt"
 import "path"
@@ -7,7 +7,7 @@ import "reflect"
 import "runtime"
 import "testing"
 
-func formatMessage(header interface{}, statements... interface{}) string {
+func formatMessage(header interface{}, statements ...interface{}) string {
 	return fmt.Sprintf("%v: %v", header, fmt.Sprint(statements...))
 }
 
@@ -15,21 +15,21 @@ func describeMismatch(target, value interface{}) string {
 	return fmt.Sprintf("%v != %v", target, value)
 }
 
-type SimpleClosure			func()
-type BlockingFunction		func(done chan bool)
-type TestWrapper			func(T *Test)
+type SimpleClosure func()
+type BlockingFunction func(done chan bool)
+type TestWrapper func(T *Test)
 
 type Test struct {
-	T			*testing.T
-	title		string
-	location	string
-	captioned	bool
-	tracing		bool
-	stack_trace	[]uintptr
+	T           *testing.T
+	title       string
+	location    string
+	captioned   bool
+	tracing     bool
+	stack_trace []uintptr
 }
 
 func NewTest(t *testing.T) *Test {
-	return &Test{T:t, tracing: true}
+	return &Test{T: t, tracing: true}
 }
 
 func (t *Test) recordLocation() *Test {
@@ -64,17 +64,17 @@ func (t *Test) LogHeader() {
 	}
 }
 
-func (t *Test) Log(comments... interface{}) {
+func (t *Test) Log(comments ...interface{}) {
 	t.LogHeader()
 	t.T.Log("  ", fmt.Sprint(comments...))
 }
 
-func (t *Test) Error(comments... interface{}) {
+func (t *Test) Error(comments ...interface{}) {
 	t.LogHeader()
 	t.T.Error("  ", t.location, "-->", fmt.Sprint(comments...))
 }
 
-func (t *Test) Comment(comments... interface{}) *Test {
+func (t *Test) Comment(comments ...interface{}) *Test {
 	t.Log(comments...)
 	return t
 }
@@ -108,16 +108,20 @@ func (t *Test) Unimplemented(s string) *Test {
 	return t
 }
 
-func (t *Test) Confirm(values... bool) *Test {
+func (t *Test) Confirm(values ...bool) *Test {
 	for i, v := range values {
-		if !v { t.Error(i + 1, " > ", describeMismatch(true, false)) }
+		if !v {
+			t.Error(i+1, " > ", describeMismatch(true, false))
+		}
 	}
 	return t
 }
 
-func (t *Test) Refute(values... bool) *Test {
+func (t *Test) Refute(values ...bool) *Test {
 	for i, v := range values {
-		if v { t.Error(i + 1, " > ", describeMismatch(false, true)) }
+		if v {
+			t.Error(i+1, " > ", describeMismatch(false, true))
+		}
 	}
 	return t
 }
@@ -132,7 +136,7 @@ func (t *Test) EachPermutation(values []interface{}, f func(id string, x, y inte
 	}
 }
 
-func (t *Test) Identical(values... interface{}) *Test {
+func (t *Test) Identical(values ...interface{}) *Test {
 	t.EachPermutation(values, func(id string, x, y interface{}) {
 		if !reflect.DeepEqual(x, y) {
 			t.Error(id, describeMismatch(x, y))
@@ -141,7 +145,7 @@ func (t *Test) Identical(values... interface{}) *Test {
 	return t
 }
 
-func (t *Test) Different(values... interface{}) *Test {
+func (t *Test) Different(values ...interface{}) *Test {
 	t.EachPermutation(values, func(id string, x, y interface{}) {
 		if reflect.DeepEqual(x, y) {
 			t.Error(id, fmt.Sprintf("%v == %v", x, y))
@@ -152,7 +156,7 @@ func (t *Test) Different(values... interface{}) *Test {
 
 func (t *Test) printStackTrace() *Test {
 	if t.tracing {
-		
+
 	}
 	return t
 }

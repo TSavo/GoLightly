@@ -1,15 +1,15 @@
-package testLightly
+package golightly
 
 import "fmt"
 
-type Reduction		func(x, y interface{}) interface{}
-type ValueSet		[]interface{}
+type Reduction func(x, y interface{}) interface{}
+type ValueSet []interface{}
 
 type TestTable struct {
-	XValues			ValueSet
-	YValues			ValueSet
-	compatibility	[]ValueSet
-	test			Reduction
+	XValues       ValueSet
+	YValues       ValueSet
+	compatibility []ValueSet
+	test          Reduction
 }
 
 func NewTestTable(test Reduction) *TestTable {
@@ -18,12 +18,12 @@ func NewTestTable(test Reduction) *TestTable {
 	return t
 }
 
-func (t *TestTable) X(values... interface{}) *TestTable {
+func (t *TestTable) X(values ...interface{}) *TestTable {
 	t.XValues = append(t.XValues, values...)
 	return t
 }
 
-func (t *TestTable) Y(value interface{}, compatibility... interface{}) *TestTable {
+func (t *TestTable) Y(value interface{}, compatibility ...interface{}) *TestTable {
 	t.YValues = append(t.YValues, value)
 	t.compatibility = append(t.compatibility, append(ValueSet{}, compatibility...))
 	return t
@@ -42,6 +42,10 @@ func (t *TestTable) Assess(T *Test) *TestTable {
 }
 
 func (t *TestTable) Apply(x, y interface{}) (i interface{}) {
-	defer func() { if recover() != nil { i = nil } }()
+	defer func() {
+		if recover() != nil {
+			i = nil
+		}
+	}()
 	return t.test(x, y)
 }

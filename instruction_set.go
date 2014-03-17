@@ -2,19 +2,25 @@
 //	TODO:	JIT compilation
 //	TODO:	AOT compilation
 
-package vm
+package golightly
 
 import (
-	"github.com/feyeleanor/slices"
 	"fmt"
+	"github.com/feyeleanor/slices"
 	"reflect"
 )
 
 type OpCode struct {
-	code		int
-	movement	int
-	data		interface{}
+	code     int
+	movement int
+	data     interface{}
 }
+
+
+func (o OpCode) String() string {
+	return fmt.Sprintf("Code: %d Movement: %d Data: %v", o.code, o.movement, o.data)
+}
+
 func (o OpCode) Similar(p OpCode) bool {
 	return o.code == p.code && o.movement == p.movement && reflect.TypeOf(o.data) == reflect.TypeOf(p.data)
 }
@@ -26,25 +32,23 @@ func (o *OpCode) Replace(p *OpCode) {
 	o.movement = p.movement
 	o.data = p.data
 }
-func (o *OpCode) String() string {
-	return fmt.Sprintf("%v: %v", o.code, o.data)
-}
 
 type Assembler interface {
 	Assemble(name string, data interface{}) OpCode
 }
 
 type Instruction struct {
-	op				int
-	movement		int
+	op       int
+	movement int
 }
 
 type InstructionSet struct {
-	ops				slices.Slice
-	tokens			map[string] *Instruction
+	ops    slices.Slice
+	tokens map[string]*Instruction
 }
+
 func (i *InstructionSet) Init() {
-	i.tokens = make(map[string] *Instruction)
+	i.tokens = make(map[string]*Instruction)
 }
 func (i *InstructionSet) Len() int {
 	return i.ops.Len()
@@ -82,6 +86,6 @@ func (i *InstructionSet) Assemble(name string, data interface{}) OpCode {
 func (i *InstructionSet) Invoke(o *OpCode) {
 	switch data := o.data.(type) {
 	case []int:
-		i.ops.At(o.code).(func (o []int))(data)
+		i.ops.At(o.code).(func(o []int))(data)
 	}
 }
