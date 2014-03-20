@@ -12,44 +12,49 @@ type ProcessorCore struct {
 	Running            bool
 	Registers          Memory
 	CallStack          Memory
-	MemorySegment      Memory
+	Heap               Memory
+	Stack              Memory
 	InstructionPointer int
 	Program
 }
 
-func (p ProcessorCore) String() string {
-	return fmt.Sprintf("ProcessorCore [Running: %t, Registers: %v, Call Stack: %v, Memory Segment: %v, Instruction Pointer: %d]",
-	p.Running,
-	p.Registers,
-	p.CallStack,
-	p.MemorySegment,
-	p.InstructionPointer)
+func (p *ProcessorCore) String() string {
+	return fmt.Sprintf("ProcessorCore [Running: %t, Registers: %v, Call Stack: %v, Stack: %v, Instruction Pointer: %d]",
+		p.Running,
+		p.Registers,
+		p.CallStack,
+		//p.Heap,
+		p.Stack,
+		p.InstructionPointer)
 }
 
 func (t *ProcessorCore) Call(location int) {
-	fmt.Printf("Jumping to %d\n", location)
-	t.CallStack = append(t.CallStack, t.InstructionPointer)
-	t.InstructionPointer = location
+	t.CallStack.Push(t.InstructionPointer)
+	t.Jump(location)
 }
 
 func (t *ProcessorCore) Return() {
 	fmt.Println("returning")
 	if t.CallStack.Len() > 0 {
 		t.InstructionPointer, _ = t.CallStack.Pop()
-		t.InstructionPointer++
-	} else {
-		fmt.Println("Can't return with no return stack.")
-		panic(t)
 	}
+	t.InstructionPointer++
+	
 }
 
 func (t *ProcessorCore) Jump(jump int) {
 	t.InstructionPointer = jump
+	if t.InstructionPointer < 0 {
+		t.InstructionPointer = 0
+	}
+	if t.InstructionPointer >= len(t.Program){
+		t.InstructionPointer = t.InstructionPointer % (len(t.Program)-1)
+	}
 }
 
 func (p *ProcessorCore) Init(registers int, instructions *InstructionSet) {
 	p.Registers = make(Memory, registers)
-
+	p.Heap = make(Memory, 4096)
 	if instructions == nil {
 		p.InstructionSet = new(InstructionSet)
 	} else {
@@ -59,7 +64,7 @@ func (p *ProcessorCore) Init(registers int, instructions *InstructionSet) {
 
 //	Make a copy of the current processor, binding it to the current processor with
 //	the supplied io channel
-func (p *ProcessorCore) Clone(c chan []int) (q *ProcessorCore, i int) {
+func (p ProcessorCore) Clone(c chan []int) (q *ProcessorCore, i int) {
 	q = new(ProcessorCore)
 	q.Init(len(p.Registers), p.InstructionSet)
 	q.IOController = append(q.IOController, c)
@@ -79,7 +84,11 @@ func (p *ProcessorCore) ResetState() {
 	p.InstructionPointer = 0
 }
 func (p *ProcessorCore) Execute() {
-	o := p.Program[p.InstructionPointer%len(p.Program)]
+    x := p.InstructionPointer
+    if x >= len(p.Program){
+    	x = x % len(p.Program)
+	}
+	o := p.Program[x]
 	fmt.Println(o)
 	o.Execute(p)
 	p.InstructionPointer += o.Instruction.Movement
@@ -87,9 +96,8 @@ func (p *ProcessorCore) Execute() {
 func (p *ProcessorCore) Run() {
 	defer func() {
 		if x := recover(); x != nil {
-			fmt.Println("Panic in execution detected.")
-			fmt.Println(x)
 			p.Running = false
+			panic(x)
 		}
 	}()
 	p.Running = true

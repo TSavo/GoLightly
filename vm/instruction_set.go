@@ -1,7 +1,3 @@
-//	TODO:	bytecode optimisation
-//	TODO:	JIT compilation
-//	TODO:	AOT compilation
-
 package vm
 
 import (
@@ -19,7 +15,7 @@ type Executable interface {
 	Execute(code *ProcessorCore, data *Memory)
 }
 
-func (o *OpCode) Execute(core *ProcessorCore){
+func (o OpCode) Execute(core *ProcessorCore){
 	o.Instruction.Closure(core, o.Data)
 }
 
@@ -92,4 +88,24 @@ func (i *InstructionSet) Assemble(name string, data *Memory) OpCode {
 		return OpCode{Instruction:op, Data: data}
 	}
 	panic("No such Instruction: " + name)
+}
+func (i *InstructionSet) Encode(m *Memory) OpCode {
+	count := 0
+	for _, x := range i.Instructions {
+		if(count == (m.Get(0) % (len(i.Instructions)-1))){
+			return OpCode{x, &Memory{m.Get(1), m.Get(2)}}
+		}
+		count++
+	}
+	panic("Didn't find an op code in the instructions")
+}
+func (i *InstructionSet) Decode(o *OpCode) Memory {
+	count := 0
+	for _, x := range i.Instructions {
+		if(x == o.Instruction){
+			return Memory{count, o.Data.Get(0), o.Data.Get(1)}
+		}
+		count++
+	}
+	panic("Didn't find a matching instruction")
 }

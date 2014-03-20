@@ -34,24 +34,24 @@ func (s *Memory) Resize(size int){
 	*s = n
 }
 
-func (m Memory) Len() (l int) {
-	l = len(m)
+func (m *Memory) Len() (l int) {
+	l = len(*m)
 	return
 }
 
-func (m Memory) Get(i int) int {
-	return m[i%m.Len()]
+func (m *Memory) Get(i int) int {
+	return (*m)[i%(m.Len()-1)]
 }
 
-func (m Memory) Set(i int, x int) {
-	m[i%m.Len()] = x
+func (m *Memory) Set(i int, x int) {
+	(*m)[i%(m.Len()-1)] = x
 }
 
-func (m Memory) Increment(i int){
+func (m *Memory) Increment(i int){
 	m.Set(i, m.Get(i) + 1)
 }
 
-func (m Memory) Decrement(i int){
+func (m *Memory) Decrement(i int){
 	m.Set(i, m.Get(i) - 1)
 }
 
