@@ -47,6 +47,45 @@ func DefineInstructions() (i *vm.InstructionSet) {
 	i.Operator("dec", func(p *vm.ProcessorCore, m *vm.Memory) {
 		p.Registers.Decrement((*m).Get(0))
 	})
+	i.Operator("add", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) + p.Registers.Get((*m).Get(1)))
+	})
+	i.Operator("sub", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) - p.Registers.Get((*m).Get(1)))
+	})
+	i.Operator("mul", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) * p.Registers.Get((*m).Get(1)))
+	})
+	i.Operator("div", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) / p.Registers.Get((*m).Get(1)))
+	})
+	i.Operator("mod", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) % p.Registers.Get((*m).Get(1)))
+	})
+	
+	i.Operator("and", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) & p.Registers.Get((*m).Get(1)))
+	})
+	i.Operator("or", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) | p.Registers.Get((*m).Get(1)))
+	})
+	i.Operator("xor", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) ^ p.Registers.Get((*m).Get(1)))
+	})
+	i.Operator("xnot", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) &^ p.Registers.Get((*m).Get(1)))
+	})
+	
+	i.Operator("lsft", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) << uint(p.Registers.Get((*m).Get(1))))
+	})
+	i.Operator("rsft", func(p *vm.ProcessorCore, m *vm.Memory) {
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) >> uint(p.Registers.Get((*m).Get(1))))
+	})
+	
+	
+	
+	
 	return
 }
 
