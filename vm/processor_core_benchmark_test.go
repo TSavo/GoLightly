@@ -1,4 +1,4 @@
-package golightly
+package vm
 
 import "github.com/feyeleanor/slices"
 import "testing"

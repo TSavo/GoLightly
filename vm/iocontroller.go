@@ -2,7 +2,7 @@
 //	TODO:	Read() and Write() interface support
 //	TODO:	write tests
 
-package golightly
+package vm
 
 
 type IOController []chan []int
