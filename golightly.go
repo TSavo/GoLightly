@@ -7,7 +7,8 @@ import (
 
 func DefineInstructions() (i *vm.InstructionSet) {
 	i = vm.NewInstructionSet()
-	i.Operator("noop", func(p *vm.ProcessorCore, m *vm.Memory) {})
+	i.Operator("noop", func(p *vm.ProcessorCore, m *vm.Memory) {
+	})
 	i.Movement("halt", func(p *vm.ProcessorCore, m *vm.Memory) {
 		p.Running = false
 	})
@@ -51,8 +52,8 @@ func DefineInstructions() (i *vm.InstructionSet) {
 
 func main() {
 	fmt.Println("ok")
-	x := new(vm.ProcessorCore)
-	instructionSet := DefineInstructions();
+	x := &vm.ProcessorCore{}
+	instructionSet := DefineInstructions()
 	x.Init(4, instructionSet)
 	fmt.Println(x)
 	p := &vm.Program{
