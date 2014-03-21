@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
 	"github.com/tsavo/golightly/vm"
-	
+	"math/rand"
+	"sort"
+	"time"
 )
 
 func DefineInstructions() (i *vm.InstructionSet) {
@@ -16,11 +16,11 @@ func DefineInstructions() (i *vm.InstructionSet) {
 		p.Running = false
 	})
 	i.Movement("jmp", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Jump(p.Registers.Get(0))
+		p.Jump(p.Registers.Get(1))
 	})
 	i.Movement("jmpz", func(p *vm.ProcessorCore, m *vm.Memory) {
 		if p.Registers.Get((*m).Get(0)) == 0 {
-			p.Jump(p.Registers.Get(0))
+			p.Jump(p.Registers.Get(1))
 		}
 	})
 	i.Movement("jmpnz", func(p *vm.ProcessorCore, m *vm.Memory) {
@@ -63,65 +63,103 @@ func DefineInstructions() (i *vm.InstructionSet) {
 		p.Registers.Decrement((*m).Get(0))
 	})
 	i.Operator("add", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) + p.Registers.Get((*m).Get(1)))
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))+p.Registers.Get((*m).Get(1)))
 	})
 	i.Operator("sub", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) - p.Registers.Get((*m).Get(1)))
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))-p.Registers.Get((*m).Get(1)))
 	})
 	i.Operator("mul", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) * p.Registers.Get((*m).Get(1)))
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))*p.Registers.Get((*m).Get(1)))
 	})
 	i.Operator("div", func(p *vm.ProcessorCore, m *vm.Memory) {
-	    defer func(){
-	      recover()
-	    }()
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) / p.Registers.Get((*m).Get(1)))
+		defer func() {
+			recover()
+		}()
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))/p.Registers.Get((*m).Get(1)))
 	})
 	i.Operator("mod", func(p *vm.ProcessorCore, m *vm.Memory) {
-		defer func(){
-	      recover()
-	    }()
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) % p.Registers.Get((*m).Get(1)))
+		defer func() {
+			recover()
+		}()
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))%p.Registers.Get((*m).Get(1)))
 	})
-	
+
 	i.Operator("and", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) & p.Registers.Get((*m).Get(1)))
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))&p.Registers.Get((*m).Get(1)))
 	})
 	i.Operator("or", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) | p.Registers.Get((*m).Get(1)))
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))|p.Registers.Get((*m).Get(1)))
 	})
 	i.Operator("xor", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) ^ p.Registers.Get((*m).Get(1)))
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))^p.Registers.Get((*m).Get(1)))
 	})
 	i.Operator("xnot", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) &^ p.Registers.Get((*m).Get(1)))
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))&^p.Registers.Get((*m).Get(1)))
 	})
-	
 	i.Operator("lsft", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) << uint(p.Registers.Get((*m).Get(1))))
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))<<uint(p.Registers.Get((*m).Get(1))))
 	})
 	i.Operator("rsft", func(p *vm.ProcessorCore, m *vm.Memory) {
-		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0)) >> uint(p.Registers.Get((*m).Get(1))))
+		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))>>uint(p.Registers.Get((*m).Get(1))))
 	})
-	
+
 	return
+}
+
+func evaluate(p *vm.ProcessorCore) int {
+	cost := 255 - p.Heap.Get(0)
+	if cost < 0{
+		cost *= -1
+	}
+	return p.Cost() + cost
+}
+
+type Result struct {
+	Cost int
+	Core *vm.ProcessorCore
+}
+
+type ResultList []Result
+
+func (s ResultList) Len() int           { return len(s) }
+func (s ResultList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s ResultList) Less(i, j int) bool { return s[i].Cost < s[j].Cost }
+
+func bestManager(finished chan *vm.ProcessorCore) {
+	best := make(ResultList, 0)
+	for {
+		e := <-finished
+		c := evaluate(e)
+		best = append(best, Result{c, e})
+		sort.Sort(best)
+		if(len(best) > 3){
+			best = best[0:3]
+		}
+		fmt.Println(best)
+	}
 }
 
 func main() {
 	fmt.Println("ok")
-	p := &vm.ProcessorCore{}
-	instructionSet := DefineInstructions()
-	p.Init(4, instructionSet)
-	fmt.Println(p)
-	
-	pro := &vm.Program{
-		instructionSet.Assemble("set", &vm.Memory{0, 1}),
+	c := make(chan *vm.ProcessorCore)
+	go bestManager(c)
+
+	for y := 0; y < 10; y++ {
+
+		p := &vm.ProcessorCore{}
+		instructionSet := DefineInstructions()
+		p.Init(4, instructionSet, c)
+		fmt.Println(p)
+
+		pro := &vm.Program{
+			instructionSet.Assemble("set", &vm.Memory{0, 1}),
+		}
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		for x := 0; x < 100; x++ {
+			*pro = append(*pro, instructionSet.Encode(&vm.Memory{r.Int(), r.Int(), r.Int()}))
+		}
+		p.LoadProgram(pro)
+		go p.Run()
 	}
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for x := 0; x < 100; x++ {
-		*pro = append(*pro, instructionSet.Encode(&vm.Memory{r.Int(), r.Int(), r.Int()}))
-	}
-	p.LoadProgram(pro)
-	p.Run()
-	fmt.Println(p)
+	time.Sleep(20 * time.Second)
 }

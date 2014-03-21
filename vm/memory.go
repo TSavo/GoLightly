@@ -23,12 +23,12 @@ func (s *Memory) Delete(i int) {
 	a := *s
 	n := len(a)
 	if i > -1 && i < n {
-		copy(a[i:n - 1], a[i + 1:n])
-		*s = a[:n - 1]
+		copy(a[i:n-1], a[i+1:n])
+		*s = a[:n-1]
 	}
 }
 
-func (s *Memory) Resize(size int){
+func (s *Memory) Resize(size int) {
 	n := make(Memory, size, size)
 	copy(n, (*s))
 	*s = n
@@ -47,21 +47,21 @@ func (m *Memory) Set(i int, x int) {
 	(*m)[i%(m.Len()-1)] = x
 }
 
-func (m *Memory) Increment(i int){
-	m.Set(i, m.Get(i) + 1)
+func (m *Memory) Increment(i int) {
+	m.Set(i, m.Get(i)+1)
 }
 
-func (m *Memory) Decrement(i int){
-	m.Set(i, m.Get(i) - 1)
+func (m *Memory) Decrement(i int) {
+	m.Set(i, m.Get(i)-1)
 }
 
-func (m *Memory) Zero(){
-	for i := 0 ; i < m.Len() ; i++ {
-		m.Set(i, 0);
-	} 
+func (m *Memory) Zero() {
+	for i := 0; i < m.Len(); i++ {
+		m.Set(i, 0)
+	}
 }
 
-func (m *Memory) Reallocate(size int){
+func (m *Memory) Reallocate(size int) {
 	(*m) = make(Memory, size)
 }
 
