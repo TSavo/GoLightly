@@ -8,7 +8,7 @@ import "fmt"
 
 
 const(
-	MAX_COST = 100
+	MAX_COST = 250
 	MIN_COST = 25
 )
 
@@ -27,19 +27,28 @@ type ProcessorCore struct {
 }
 
 func (p *ProcessorCore) Cost() int {
-	if(p.cost < MIN_COST){
-		return p.Stack.Len() + p.CallStack.Len()
-	}else{
-		return p.cost + p.Stack.Len() + p.CallStack.Len()
+	//if(p.cost < MIN_COST){
+	//	return p.Stack.Len() + p.CallStack.Len()
+	//}else{
+
+	progLen := len(p.Program)
+	if(progLen < 100){
+		progLen = 100
 	}
+	cost := p.cost
+	if(cost < 20){
+		cost = 20
+	}
+	return cost + progLen + p.Stack.Len() + p.CallStack.Len()
+	//}
 }
 
 func (p *ProcessorCore) String() string {
-	return fmt.Sprintf("ProcessorCore [Running: %t, Registers: %v, Instruction Pointer: %d Cost: %d]",
+	return fmt.Sprintf("ProcessorCore [Running: %t, Registers: %v, Heap: %v, Instruction Pointer: %d Cost: %d]",
 		p.Running,
 		p.Registers,
 		//p.CallStack,
-		//p.Heap,
+		p.Heap,
 		//p.Stack,
 		p.InstructionPointer,
 		p.Cost())
@@ -97,14 +106,20 @@ func (p *ProcessorCore) LoadProgram(program *Program) {
 }
 func (p *ProcessorCore) ResetState() {
 	p.Registers.Zero()
+	p.Heap.Zero()
 	p.CallStack.Reallocate(0)
 	p.InstructionPointer = 0
 	p.cost = 0
 }
 func (p *ProcessorCore) Execute() {
+	if len(p.Program) == 0 {
+		p.InstructionPointer++
+		p.cost++
+		return
+	}
 	x := p.InstructionPointer
 	if x >= len(p.Program) {
-		x = x % (len(p.Program) - 1)
+		x = x % len(p.Program)
 	}
 	o := p.Program[x]
 	o.Execute(p)

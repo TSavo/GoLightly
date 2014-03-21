@@ -34,23 +34,43 @@ func (s *Memory) Resize(size int) {
 	*s = n
 }
 
-func (m *Memory) Len() (l int) {
-	l = len(*m)
+func (m Memory) Len() (l int) {
+	l = len(m)
 	return
 }
 
-func (m *Memory) Get(i int) int {
+func (m Memory) Get(i int) int {
+	l := len(m)
+	if l < 1 {
+		panic("Memory is of size < 1")
+	}
 	if i < 0 {
 		i *= -1
 	}
-	return (*m)[i%(m.Len()-1)]
+	if i >= l {
+		i = i % l
+	}
+	defer func() {
+		recover()
+	}()
+	return m[i]
 }
 
-func (m *Memory) Set(i int, x int) {
+func (m Memory) Set(i int, x int) {
+	l := m.Len()
+	if l < 1 {
+		panic("Memory is of size < 1")
+	}
 	if i < 0 {
 		i *= -1
 	}
-	(*m)[i%(m.Len()-1)] = x
+	if i >= l {
+		i = i % l
+	}
+	defer func() {
+		recover()
+	}()
+	m[i] = x
 }
 
 func (m *Memory) Increment(i int) {
