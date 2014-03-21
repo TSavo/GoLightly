@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+const (
+	POPULATION_SIZE = 1000
+	BEST_OF_BREED = 100
+)
+
 func DefineInstructions() (i *vm.InstructionSet) {
 	i = vm.NewInstructionSet()
 	i.Operator("noop", func(p *vm.ProcessorCore, m *vm.Memory) {
@@ -108,7 +113,7 @@ func DefineInstructions() (i *vm.InstructionSet) {
 
 func evaluate(p *vm.ProcessorCore) int {
 	cost := 255 - p.Heap.Get(0)
-	if cost < 0{
+	if cost < 0 {
 		cost *= -1
 	}
 	return p.Cost() + cost
@@ -125,41 +130,81 @@ func (s ResultList) Len() int           { return len(s) }
 func (s ResultList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s ResultList) Less(i, j int) bool { return s[i].Cost < s[j].Cost }
 
-func bestManager(finished chan *vm.ProcessorCore) {
+func bestManager(finished chan *vm.ProcessorCore, instructionSet *vm.InstructionSet, results chan int) {
 	best := make(ResultList, 0)
 	for {
 		e := <-finished
+		cost := e.Heap.Get(0)
+		if(cost == 255){
+			results <- 255
+			//fmt.Println(255)
+		}
 		c := evaluate(e)
 		best = append(best, Result{c, e})
-		sort.Sort(best)
-		if(len(best) > 3){
-			best = best[0:3]
+		if len(best) >= POPULATION_SIZE {
+			sort.Sort(best)
+			best = best[0:BEST_OF_BREED]
+			for _,b := range best {
+				for i := 0; i < (POPULATION_SIZE / BEST_OF_BREED) - 1; i++ {
+					prog := mutateProgram(&b.Core.Program, instructionSet, 0.1)
+					p := NewSolver(instructionSet, prog, finished)
+					go p.Run()
+				}
+				go NewSolver(instructionSet, &b.Core.Program, finished).Run()
+				
+			}
+			best = make(ResultList, 0)
 		}
-		fmt.Println(best)
 	}
 }
 
+func mutateProgram(prog *vm.Program, instructions *vm.InstructionSet, chance float64) *vm.Program {
+	outProg := make(vm.Program, len(*prog))
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i, x := range *prog {
+		if rand.Float64() <= chance {
+			decode := instructions.Decode(&x)
+			if rand.Float64() <= 0.5 {
+				decode.Set(0, r.Int())
+			}
+			if rand.Float64() <= 0.5 {
+				decode.Set(1, r.Int())
+			}
+			if rand.Float64() <= 0.5 {
+				decode.Set(2, r.Int())
+			}
+			outProg[i] = *instructions.Encode(decode)
+		} else {
+			outProg[i] = x
+		}
+	}
+	return &outProg
+}
+
+func NewSolver(instructionSet *vm.InstructionSet, prog *vm.Program, c chan *vm.ProcessorCore) *vm.ProcessorCore {
+	p := &vm.ProcessorCore{}
+	p.Init(4, instructionSet, c)
+	p.LoadProgram(prog)
+	return p
+}
+
 func main() {
-	fmt.Println("ok")
-	c := make(chan *vm.ProcessorCore)
-	go bestManager(c)
+	finish := make(chan *vm.ProcessorCore)
+	results := make(chan int)
+	instructionSet := DefineInstructions()
+	go bestManager(finish, instructionSet, results)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	for y := 0; y < 10; y++ {
-
-		p := &vm.ProcessorCore{}
-		instructionSet := DefineInstructions()
-		p.Init(4, instructionSet, c)
-		fmt.Println(p)
+	for y := 0; y < POPULATION_SIZE; y++ {
 
 		pro := &vm.Program{
 			instructionSet.Assemble("set", &vm.Memory{0, 1}),
 		}
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for x := 0; x < 100; x++ {
-			*pro = append(*pro, instructionSet.Encode(&vm.Memory{r.Int(), r.Int(), r.Int()}))
+			*pro = append(*pro, *instructionSet.Encode(&vm.Memory{r.Int(), r.Int(), r.Int()}))
 		}
-		p.LoadProgram(pro)
+		p := NewSolver(instructionSet, pro, finish)
 		go p.Run()
 	}
-	time.Sleep(20 * time.Second)
+	fmt.Println(<- results)
 }

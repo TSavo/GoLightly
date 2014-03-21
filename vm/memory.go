@@ -40,10 +40,16 @@ func (m *Memory) Len() (l int) {
 }
 
 func (m *Memory) Get(i int) int {
+	if i < 0 {
+		i *= -1
+	}
 	return (*m)[i%(m.Len()-1)]
 }
 
 func (m *Memory) Set(i int, x int) {
+	if i < 0 {
+		i *= -1
+	}
 	(*m)[i%(m.Len()-1)] = x
 }
 

@@ -6,7 +6,11 @@ package vm
 
 import "fmt"
 
-const MAX_COST = 2000
+
+const(
+	MAX_COST = 100
+	MIN_COST = 25
+)
 
 type ProcessorCore struct {
 	*InstructionSet
@@ -19,11 +23,15 @@ type ProcessorCore struct {
 	InstructionPointer int
 	cost               int
 	Program
-	finished			chan *ProcessorCore
+	finished chan *ProcessorCore
 }
 
 func (p *ProcessorCore) Cost() int {
-	return p.cost + len(p.Program) + p.Stack.Len() + p.Heap.Len() + p.CallStack.Len() + p.Registers.Len()
+	if(p.cost < MIN_COST){
+		return p.Stack.Len() + p.CallStack.Len()
+	}else{
+		return p.cost + p.Stack.Len() + p.CallStack.Len()
+	}
 }
 
 func (p *ProcessorCore) String() string {
@@ -43,7 +51,6 @@ func (t *ProcessorCore) Call(location int) {
 }
 
 func (t *ProcessorCore) Return() {
-	fmt.Println("returning")
 	if t.CallStack.Len() > 0 {
 		t.InstructionPointer, _ = t.CallStack.Pop()
 	}
@@ -100,7 +107,6 @@ func (p *ProcessorCore) Execute() {
 		x = x % (len(p.Program) - 1)
 	}
 	o := p.Program[x]
-	fmt.Println(o)
 	o.Execute(p)
 	p.cost++
 	p.InstructionPointer += o.Instruction.Movement
@@ -113,16 +119,13 @@ func (p *ProcessorCore) Run() {
 	//		}
 	//	}()
 	p.Running = true
+	defer func() {
+		p.finished <- p
+	}()
 	for p.Running {
-		fmt.Println("running")
 		p.Execute()
 		if p.Cost() > MAX_COST {
 			p.Running = false
 		}
-	}
-	fmt.Println("done")
-	select {
-		case p.finished <- p:
-		default:
 	}
 }
