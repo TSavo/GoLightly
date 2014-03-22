@@ -12,6 +12,22 @@ const (
     MinInt64 = int64(math.MinInt64)
 )
 
+func Max8(left, right int8) int8 {
+	if left > right {
+		return left
+	} else {
+		return right
+	}
+}
+
+func Min8(left, right int8) int8 {
+	if left < right {
+		return left
+	} else {
+		return right
+	}
+}
+
 func Max(left, right int) int {
 	if left > right {
 		return left
@@ -21,6 +37,38 @@ func Max(left, right int) int {
 }
 
 func Min(left, right int) int {
+	if left < right {
+		return left
+	} else {
+		return right
+	}
+}
+
+func Max32(left, right int32) int32 {
+	if left > right {
+		return left
+	} else {
+		return right
+	}
+}
+
+func Min32(left, right int32) int32 {
+	if left < right {
+		return left
+	} else {
+		return right
+	}
+}
+
+func Max64(left, right int64) int64 {
+	if left > right {
+		return left
+	} else {
+		return right
+	}
+}
+
+func Min64(left, right int64) int64 {
 	if left < right {
 		return left
 	} else {
