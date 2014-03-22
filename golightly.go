@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/seehuhn/mt19937"
 	"github.com/tsavo/golightly/vm"
+	"github.com/tsavo/golightly/intutil"
 	"math/rand"
 	"sort"
 	"time"
@@ -13,6 +14,7 @@ const (
 	POPULATION_SIZE = 10000
 	BEST_OF_BREED   = 100
 )
+
 
 func DefineInstructions() (i *vm.InstructionSet) {
 	i = vm.NewInstructionSet()
@@ -112,12 +114,6 @@ func DefineInstructions() (i *vm.InstructionSet) {
 	return
 }
 
-func Abs(abs int64) int64 {
-	if abs < 0 {
-		abs = abs * -1
-	}
-	return abs
-}
 
 func evaluate(p *vm.ProcessorCore) int64 {
 	if p.Heap.Get(0) > 10000 || p.Heap.Get(0) < 0 ||
@@ -127,11 +123,11 @@ func evaluate(p *vm.ProcessorCore) int64 {
 		return 10000
 	}
 
-	var cost int64 = Abs(255 - int64(p.Heap.Get(0)))
-	cost += Abs(500 - int64(p.Heap.Get(1)))
-	cost += Abs(255 - int64(p.Heap.Get(2)))
-	cost += Abs(255 - int64(p.Heap.Get(3)))
-	return Abs(int64(p.Cost()) + cost)
+	var cost int64 = intutil.Abs64(255 - int64(p.Heap.Get(0)))
+	cost += intutil.Abs64(500 - int64(p.Heap.Get(1)))
+	cost += intutil.Abs64(255 - int64(p.Heap.Get(2)))
+	cost += intutil.Abs64(255 - int64(p.Heap.Get(3)))
+	return intutil.Abs64(int64(p.Cost()) + cost)
 }
 
 type Result struct {
@@ -184,7 +180,7 @@ func bestManager(finished chan *vm.ProcessorCore, instructionSet *vm.Instruction
 			count := 0
 			for _, b := range best {
 				for i := 0; i < (POPULATION_SIZE/BEST_OF_BREED)/2; i++ {
-					go NewSolver(instructionSet, mutateProgram(&b.Core.Program, instructionSet, 0.1), finished).Run()
+					go NewSolver(instructionSet, mutateProgram(&b.Core.Program, instructionSet, 0.25), finished).Run()
 					count++
 				}
 				go NewSolver(instructionSet, &b.Core.Program, finished).Run()
@@ -192,18 +188,29 @@ func bestManager(finished chan *vm.ProcessorCore, instructionSet *vm.Instruction
 			}
 			for count < POPULATION_SIZE {
 				count++
-				pro := &vm.Program{}
-				for x := 0; x < 100; x++ {
-					*pro = append(*pro, *instructionSet.Encode(&vm.Memory{rng.Int() % 10000, rng.Int() % 10000, rng.Int() % 10000}))
-				}
-				r := NewSolver(instructionSet, pro, finished)
-				go r.Run()
+				go NewSolver(instructionSet, RandomProgram(instructionSet, 100), finished).Run()
 			}
 			pops++
 			best = make(ResultList, 0)
 
 		}
 	}
+}
+
+
+func CombinePrograms(prog1 *vm.Program, prog2 *vm.Program) *vm.Program {
+	l1 := len(*prog1)
+	l2 := len(*prog2)
+	prog := make(vm.Program, intutil.Max(l1, l2))
+	split := rng.Int() % intutil.Min(l1, l2)
+	for x := 0; x < len(prog); x++ {
+		if x > len(*prog1)-1 || (x > split && x < len(*prog2)) {
+			prog[x] = (*prog2)[x]
+		} else {
+			prog[x] = (*prog1)[x]
+		}
+	}
+	return &prog
 }
 
 func mutateProgram(prog *vm.Program, instructions *vm.InstructionSet, chance float64) *vm.Program {
@@ -213,15 +220,15 @@ func mutateProgram(prog *vm.Program, instructions *vm.InstructionSet, chance flo
 		if rng.Float64() < chance {
 
 			//one in 100 times, add
-			if rng.Float64() < 0.1 {
+			if rng.Float64() < 0.25 {
 
 				for r := rng.Int() % 10; r < 10; r++ {
-					outProg = append(outProg, *instructions.Encode(&vm.Memory{rng.Int() % 10000, rng.Int() % 10000, rng.Int() % 10000}))
+					outProg = append(outProg, *RandomOpCode(instructions))
 				}
 			}
 
 			//one in 100 times, delete
-			if rng.Float64() < 0.1 && len(*prog) > 20 {
+			if rng.Float64() < 0.25 && len(*prog) > 20 {
 				continue
 			}
 			decode := instructions.Decode(&x)
@@ -250,6 +257,18 @@ func NewSolver(instructionSet *vm.InstructionSet, prog *vm.Program, c chan *vm.P
 	return p
 }
 
+func RandomProgram(instructionSet *vm.InstructionSet, size int) *vm.Program {
+	pro := &vm.Program{}
+	for x := 0; x < size; x++ {
+		*pro = append(*pro, *RandomOpCode(instructionSet))
+	}
+	return pro
+}
+
+func RandomOpCode(instructionSet *vm.InstructionSet) *vm.OpCode {
+	return instructionSet.Encode(&vm.Memory{rng.Int() % 10000, rng.Int() % 10000, rng.Int() % 10000})
+}
+
 var rng = rand.New(mt19937.New())
 
 func main() {
@@ -260,13 +279,7 @@ func main() {
 	go bestManager(finish, instructionSet, results)
 
 	for y := 0; y < POPULATION_SIZE; y++ {
-
-		pro := &vm.Program{}
-		for x := 0; x < 100; x++ {
-			*pro = append(*pro, *instructionSet.Encode(&vm.Memory{rng.Int() % 10000, rng.Int() % 10000, rng.Int() % 10000}))
-		}
-		p := NewSolver(instructionSet, pro, finish)
-		go p.Run()
+		go NewSolver(instructionSet, RandomProgram(instructionSet, 100), finish).Run()
 	}
 	for {
 		fmt.Println(<-results)
