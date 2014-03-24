@@ -27,14 +27,10 @@ type ProcessorCore struct {
 }
 
 func (p *ProcessorCore) Cost() int {
-	//if(p.cost < MIN_COST){
-	//	return p.Stack.Len() + p.CallStack.Len()
-	//}else{
-
 	progLen := len(p.Program)
 	cost := p.cost
 	return cost + progLen + p.Stack.Len() + p.CallStack.Len()
-	//}
+	
 }
 
 func (p *ProcessorCore) String() string {

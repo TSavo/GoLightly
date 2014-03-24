@@ -157,7 +157,7 @@ func (s *Solver) MutateProgram(prog *Program) *Program {
 					outProg = append(outProg, s.RandomOpCode())
 				}
 			}
-			if s.rng.Float64() < 0.1 && len(*prog) > 50 {
+			if s.rng.Float64() < 0.1 && len(*prog) > 2 {
 				continue
 			}
 			decode := s.instructionSet.Decode(x)

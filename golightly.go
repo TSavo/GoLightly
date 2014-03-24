@@ -9,10 +9,10 @@ import (
 
 const (
 	POPULATION_SIZE = 20000
-	BEST_OF_BREED   = 200
-	PROGRAM_LENGTH  = 50
+	BEST_OF_BREED   = 500
+	PROGRAM_LENGTH  = 150
 	UNIVERSE_SIZE = 10
-	ROUND_LENGTH = 4
+	ROUND_LENGTH = 20
 )
 
 func DefineInstructions() (i *vm.InstructionSet) {
