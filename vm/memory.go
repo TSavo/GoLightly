@@ -47,9 +47,7 @@ func (m Memory) Get(i int) int {
 	if i < 0 {
 		i *= -1
 	}
-	if i >= l {
-		i = i % l
-	}
+	i = i % l
 	defer func() {
 		recover()
 	}()
@@ -64,9 +62,7 @@ func (m Memory) Set(i int, x int) {
 	if i < 0 {
 		i *= -1
 	}
-	if i >= l {
-		i = i % l
-	}
+	i = i % l
 	defer func() {
 		recover()
 	}()

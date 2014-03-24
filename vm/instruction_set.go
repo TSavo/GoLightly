@@ -20,7 +20,7 @@ func (o OpCode) Execute(core *ProcessorCore){
 }
 
 func (o OpCode) String() string {
-	return fmt.Sprintf("Instruction: (%v) Data: (%v)", o.Instruction, o.Data)
+	return fmt.Sprintf("%v %v, %v\n", o.Instruction, o.Data.Get(0), o.Data.Get(1))
 }
 
 func (o OpCode) Similar(p OpCode) bool {
@@ -35,17 +35,19 @@ type Assembler interface {
 }
 
 type Instruction struct {
-	Code      string
+	id int
+	Name string
 	Movement int
 	Closure func(*ProcessorCore, *Memory)
 }
 
 func (i Instruction) String() string {
-	return fmt.Sprintf("Code: %s, Movement: %d", i.Code, i.Movement)
+	return fmt.Sprintf("%s", i.Name)
 }
 
 type InstructionSet struct {
-	Instructions map[string]*Instruction
+	Instructions map[int]*Instruction
+	opcode int
 }
 
 func NewInstructionSet() (i *InstructionSet){
@@ -55,57 +57,40 @@ func NewInstructionSet() (i *InstructionSet){
 }
 
 func (i *InstructionSet) Init() {
-	i.Instructions = make(map[string]*Instruction)
+	i.Instructions = make(map[int]*Instruction)
 }
 func (i *InstructionSet) Len() int {
 	return len(i.Instructions)
 }
-func (i *InstructionSet) Exists(name string) bool {
+func (i *InstructionSet) Exists(name int) bool {
 	_, ok := i.Instructions[name]
 	return ok
 }
-func (i *InstructionSet) Define(name string, movement int, closure func(*ProcessorCore, *Memory)) (successful bool) {
-	if _, ok := i.Instructions[name]; !ok {
-		i.Instructions[name] = &Instruction{Code: name, Movement:movement, Closure:closure}
-		successful = true
-	}
-	return
+func (i *InstructionSet) Define(name string, movement int, closure func(*ProcessorCore, *Memory)) {
+	i.Instructions[i.opcode] = &Instruction{id: i.opcode, Name:name, Movement:movement, Closure:closure}
+	i.opcode++
 }
-func (i *InstructionSet) Movement(name string, closure func(*ProcessorCore, *Memory)) bool {
-	return i.Define(name, 0, closure)
+func (i *InstructionSet) Movement(name string, closure func(*ProcessorCore, *Memory)) {
+	i.Define(name, 0, closure)
 }
-func (i *InstructionSet) Operator(name string, closure func(*ProcessorCore, *Memory)) bool {
-	return i.Define(name, 1, closure)
+func (i *InstructionSet) Operator(name string, closure func(*ProcessorCore, *Memory)) {
+	i.Define(name, 1, closure)
 }
-func (i *InstructionSet) Instruction(name string) *Instruction {
+func (i *InstructionSet) Instruction(name int) *Instruction {
 	if op, ok := i.Instructions[name]; ok {
 		return op
 	}
 	return nil
 }
-func (i *InstructionSet) Assemble(name string, data *Memory) OpCode {
+func (i *InstructionSet) Assemble(name int, data *Memory) OpCode {
 	if op := i.Instruction(name); op != nil {
 		return OpCode{Instruction:op, Data: data}
 	}
-	panic("No such Instruction: " + name)
+	panic("No such Instruction")
 }
 func (i *InstructionSet) Encode(m *Memory) *OpCode {
-	count := 0
-	for _, x := range i.Instructions {
-		if(count == (m.Get(0) % (len(i.Instructions)-1))){
-			return &OpCode{x, &Memory{m.Get(1), m.Get(2)}}
-		}
-		count++
-	}
-	panic("Didn't find an op code in the instructions")
+	return &OpCode{i.Instructions[m.Get(0) % len(i.Instructions)], &Memory{m.Get(1), m.Get(2)}}
 }
 func (i *InstructionSet) Decode(o *OpCode) *Memory {
-	count := 0
-	for _, x := range i.Instructions {
-		if(x == o.Instruction){
-			return &Memory{count, o.Data.Get(0), o.Data.Get(1)}
-		}
-		count++
-	}
-	panic("Didn't find a matching instruction")
+	return &Memory{o.Instruction.id, o.Data.Get(0), o.Data.Get(1)}
 }

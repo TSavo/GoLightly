@@ -1,20 +1,19 @@
 package main
 
 import (
-	"fmt"
-	"github.com/seehuhn/mt19937"
-	"github.com/tsavo/golightly/vm"
 	"github.com/tsavo/golightly/intutil"
-	"math/rand"
-	"sort"
-	"time"
+	"github.com/tsavo/golightly/vm"
+	"runtime"
+	"fmt"
 )
 
 const (
-	POPULATION_SIZE = 10000
-	BEST_OF_BREED   = 100
+	POPULATION_SIZE = 20000
+	BEST_OF_BREED   = 200
+	PROGRAM_LENGTH  = 50
+	UNIVERSE_SIZE = 10
+	ROUND_LENGTH = 4
 )
-
 
 func DefineInstructions() (i *vm.InstructionSet) {
 	i = vm.NewInstructionSet()
@@ -76,7 +75,7 @@ func DefineInstructions() (i *vm.InstructionSet) {
 	i.Operator("subtract", func(p *vm.ProcessorCore, m *vm.Memory) {
 		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))-p.Registers.Get((*m).Get(1)))
 	})
-	i.Operator("muliply", func(p *vm.ProcessorCore, m *vm.Memory) {
+	i.Operator("multiply", func(p *vm.ProcessorCore, m *vm.Memory) {
 		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))*p.Registers.Get((*m).Get(1)))
 	})
 	i.Operator("divide", func(p *vm.ProcessorCore, m *vm.Memory) {
@@ -85,7 +84,7 @@ func DefineInstructions() (i *vm.InstructionSet) {
 		}()
 		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))/p.Registers.Get((*m).Get(1)))
 	})
-	i.Operator("modulo", func(p *vm.ProcessorCore, m *vm.Memory) {
+	i.Operator("modulos", func(p *vm.ProcessorCore, m *vm.Memory) {
 		defer func() {
 			recover()
 		}()
@@ -101,7 +100,7 @@ func DefineInstructions() (i *vm.InstructionSet) {
 	i.Operator("xor", func(p *vm.ProcessorCore, m *vm.Memory) {
 		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))^p.Registers.Get((*m).Get(1)))
 	})
-	i.Operator("xnot", func(p *vm.ProcessorCore, m *vm.Memory) {
+	i.Operator("xand", func(p *vm.ProcessorCore, m *vm.Memory) {
 		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))&^p.Registers.Get((*m).Get(1)))
 	})
 	i.Operator("leftShift", func(p *vm.ProcessorCore, m *vm.Memory) {
@@ -114,174 +113,89 @@ func DefineInstructions() (i *vm.InstructionSet) {
 	return
 }
 
-
-func evaluate(p *vm.ProcessorCore) int64 {
-	if p.Heap.Get(0) > 10000 || p.Heap.Get(0) < 0 ||
-		p.Heap.Get(1) > 10000 || p.Heap.Get(1) < 0 ||
-		p.Heap.Get(2) > 10000 || p.Heap.Get(2) < 0 ||
-		p.Heap.Get(3) > 10000 || p.Heap.Get(3) < 0 {
+func evaluate(p *vm.Memory, cost int) int64 {
+	if p.Get(0) > 10000 || p.Get(0) < 0 ||
+		p.Get(1) > 10000 || p.Get(1) < 0 ||
+		p.Get(2) > 10000 || p.Get(2) < 0 ||
+		p.Get(3) > 10000 || p.Get(3) < 0 {
 		return 10000
 	}
 
-	var cost int64 = intutil.Abs64(255 - int64(p.Heap.Get(0)))
-	cost += intutil.Abs64(500 - int64(p.Heap.Get(1)))
-	cost += intutil.Abs64(255 - int64(p.Heap.Get(2)))
-	cost += intutil.Abs64(255 - int64(p.Heap.Get(3)))
-	return intutil.Abs64(int64(p.Cost()) + cost)
+	var fit int64 = intutil.Abs64(255 - int64(p.Get(0)))
+	fit += intutil.Abs64(500 - int64(p.Get(1)))
+	fit += intutil.Abs64(255 - int64(p.Get(2)))
+	fit += intutil.Abs64(255 - int64(p.Get(3)))
+	return intutil.Abs64(int64(cost) + fit)
 }
 
-type Result struct {
-	Cost int64
-	Core *vm.ProcessorCore
+func CombinePrograms(s1 []*vm.Program, s2 []*vm.Program) []*vm.Program {
+	prog := []*vm.Program{}
+	prog = append(prog, s1[0:len(s1)/2]...)
+	prog = append(prog, s2[0:len(s2)/2]...)
+	return prog
 }
 
-type ResultList []Result
-
-func (s ResultList) Len() int           { return len(s) }
-func (s ResultList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s ResultList) Less(i, j int) bool { return s[i].Cost < s[j].Cost }
-func (s *ResultList) Dedup() {
-	res := make(ResultList, 0)
-outer:
-	for x := 0; x < len(*s); x++ {
-		for y := x + 1; y < len(*s); y++ {
-			if (*s)[x].Core.Program.Equals(&(*s)[y].Core.Program) {
-				continue outer
-			}
-		}
-		res = append(res, (*s)[x])
-	}
-	(*s) = res
+type Member struct {
+	Solver       *vm.Solver
+	Fitness      int64
+	SolutionChan chan *vm.Solution
+	ControlChan  chan bool
 }
 
-var pops = 0
-var bestSoFar int64 = 1000
-
-func bestManager(finished chan *vm.ProcessorCore, instructionSet *vm.InstructionSet, results chan int) {
-	best := make(ResultList, 0)
-	for {
-		e := <-finished
-		c := evaluate(e)
-		if e.Heap.Get(0) == 255 && c < int64(bestSoFar) {
-			results <- int(c)
-			bestSoFar = c
-			fmt.Println(e)
-		}
-		best = append(best, Result{c, e})
-		if len(best) >= POPULATION_SIZE {
-			best.Dedup()
-			sort.Sort(best)
-			ok := BEST_OF_BREED
-			if len(best) < BEST_OF_BREED {
-				ok = len(best)
-			}
-			best = best[0:ok]
-			fmt.Println(best)
-			count := 0
-			for _, b := range best {
-				for i := 0; i < (POPULATION_SIZE/BEST_OF_BREED)/2; i++ {
-					go NewSolver(instructionSet, mutateProgram(&b.Core.Program, instructionSet, 0.25), finished).Run()
-					count++
-				}
-				go NewSolver(instructionSet, &b.Core.Program, finished).Run()
-				count++
-			}
-			for count < POPULATION_SIZE {
-				count++
-				go NewSolver(instructionSet, RandomProgram(instructionSet, 100), finished).Run()
-			}
-			pops++
-			best = make(ResultList, 0)
-
-		}
-	}
-}
-
-
-func CombinePrograms(prog1 *vm.Program, prog2 *vm.Program) *vm.Program {
-	l1 := len(*prog1)
-	l2 := len(*prog2)
-	prog := make(vm.Program, intutil.Max(l1, l2))
-	split := rng.Int() % intutil.Min(l1, l2)
-	for x := 0; x < len(prog); x++ {
-		if x > len(*prog1)-1 || (x > split && x < len(*prog2)) {
-			prog[x] = (*prog2)[x]
-		} else {
-			prog[x] = (*prog1)[x]
-		}
-	}
-	return &prog
-}
-
-func mutateProgram(prog *vm.Program, instructions *vm.InstructionSet, chance float64) *vm.Program {
-	outProg := make(vm.Program, 0)
-
-	for _, x := range *prog {
-		if rng.Float64() < chance {
-
-			//one in 100 times, add
-			if rng.Float64() < 0.25 {
-
-				for r := rng.Int() % 10; r < 10; r++ {
-					outProg = append(outProg, *RandomOpCode(instructions))
-				}
-			}
-
-			//one in 100 times, delete
-			if rng.Float64() < 0.25 && len(*prog) > 20 {
-				continue
-			}
-			decode := instructions.Decode(&x)
-			if rng.Float64() < 0.5 {
-				decode.Set(0, rng.Int()%10000)
-			}
-			if rng.Float64() < 0.5 {
-				decode.Set(1, rng.Int()%10000)
-			}
-			if rng.Float64() < 0.5 {
-				decode.Set(2, rng.Int()%10000)
-			}
-			outProg = append(outProg, *instructions.Encode(decode))
-
-		} else {
-			outProg = append(outProg, x)
-		}
-	}
-	return &outProg
-}
-
-func NewSolver(instructionSet *vm.InstructionSet, prog *vm.Program, c chan *vm.ProcessorCore) *vm.ProcessorCore {
-	p := &vm.ProcessorCore{}
-	p.Init(4, instructionSet, c)
-	p.LoadProgram(prog)
-	return p
-}
-
-func RandomProgram(instructionSet *vm.InstructionSet, size int) *vm.Program {
-	pro := &vm.Program{}
-	for x := 0; x < size; x++ {
-		*pro = append(*pro, *RandomOpCode(instructionSet))
-	}
-	return pro
-}
-
-func RandomOpCode(instructionSet *vm.InstructionSet) *vm.OpCode {
-	return instructionSet.Encode(&vm.Memory{rng.Int() % 10000, rng.Int() % 10000, rng.Int() % 10000})
-}
-
-var rng = rand.New(mt19937.New())
+type Population []*Member
 
 func main() {
-	rng.Seed(time.Now().UnixNano())
-	finish := make(chan *vm.ProcessorCore)
-	results := make(chan int)
+	runtime.LockOSThread()
 	instructionSet := DefineInstructions()
-	go bestManager(finish, instructionSet, results)
-
-	for y := 0; y < POPULATION_SIZE; y++ {
-		go NewSolver(instructionSet, RandomProgram(instructionSet, 100), finish).Run()
+	//finish := make(chan *vm.ProcessorCore)
+	//results := make(chan int)
+	population := make(Population, 0)
+	for x := 0; x < UNIVERSE_SIZE; x++ {
+		solver := vm.NewSolver(POPULATION_SIZE, BEST_OF_BREED, PROGRAM_LENGTH, 4, 4, 0.1, evaluate, instructionSet)
+		solutionChan := make(chan *vm.Solution)
+		control := make(chan bool)
+		population = append(population, &Member{solver, 10000, solutionChan, control})
+		go solver.Solve(solutionChan, control, nil)
 	}
-	for {
-		fmt.Println(<-results)
-	}
+	go func() {
+		count := 0
+		bestFit := int64(100000)
+		for {
+			count++
+			champs := make([]*vm.Program, 0)
+			for _, member := range population {
+				solution := <-member.SolutionChan
+				if(bestFit > solution.Fitness){
+					fmt.Println(solution.Fitness)
+					bestFit = solution.Fitness
+					fmt.Println(solution.Heaps[0])
+				}
+				if count < ROUND_LENGTH {
+					member.ControlChan <- true
+				} else {
+					member.ControlChan <- false
+					champs = append(champs, solution.Champions[0:int(float32(len(solution.Champions))*0.1)]...)
+				}
+			}
+			if count < ROUND_LENGTH {
+				continue
+			}
+			fmt.Printf("recombo: %d\n", len(champs))
+			count = 0
+			population = make(Population, 0)
+			for x := 0; x < UNIVERSE_SIZE-1; x++ {
+				solver := vm.NewSolver(POPULATION_SIZE, BEST_OF_BREED, PROGRAM_LENGTH, 4, 4, 0.1, evaluate, instructionSet)
+				solutionChan := make(chan *vm.Solution)
+				control := make(chan bool)
+				population = append(population, &Member{solver, 10000, solutionChan, control})
+				go solver.Solve(solutionChan, control, nil)
+			}
+			solver := vm.NewSolver(POPULATION_SIZE, BEST_OF_BREED, PROGRAM_LENGTH, 4, 4, 0.1, evaluate, instructionSet)
+			solutionChan := make(chan *vm.Solution)
+			control := make(chan bool)
+			population = append(population, &Member{solver, 10000, solutionChan, control})
+			go solver.Solve(solutionChan, control, champs)
+		}
+	}()
+	<-make(chan int)
 }

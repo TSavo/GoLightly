@@ -8,7 +8,7 @@ import "fmt"
 
 
 const(
-	MAX_COST = 250
+	MAX_COST = 300
 	MIN_COST = 25
 )
 
@@ -18,7 +18,7 @@ type ProcessorCore struct {
 	Running            bool
 	Registers          Memory
 	CallStack          Memory
-	Heap               Memory
+	Heap               *Memory
 	Stack              Memory
 	InstructionPointer int
 	cost               int
@@ -32,13 +32,7 @@ func (p *ProcessorCore) Cost() int {
 	//}else{
 
 	progLen := len(p.Program)
-	if(progLen < 100){
-		progLen = 100
-	}
 	cost := p.cost
-	if(cost < 20){
-		cost = 20
-	}
 	return cost + progLen + p.Stack.Len() + p.CallStack.Len()
 	//}
 }
@@ -79,7 +73,8 @@ func (t *ProcessorCore) Jump(jump int) {
 
 func (p *ProcessorCore) Init(registers int, instructions *InstructionSet, finished chan *ProcessorCore) {
 	p.Registers = make(Memory, registers)
-	p.Heap = make(Memory, 4)
+	heap := make(Memory, 4)
+	p.Heap = &heap
 	if instructions == nil {
 		p.InstructionSet = new(InstructionSet)
 	} else {
