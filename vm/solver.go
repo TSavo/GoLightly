@@ -9,7 +9,7 @@ import (
 )
 
 type Solver struct {
-	PopulationSize, BestOfBreed, ProgramLength, HeapLength, RegisterLength int
+	Id, PopulationSize, BestOfBreed, ProgramLength, HeapLength, RegisterLength int
 	MutationChance                                                         float64
 	Evaluator                                                              func(*Memory, int) int64
 	instructionSet                                                         *InstructionSet
@@ -29,9 +29,9 @@ func (s *Solver) RandomOpCode() *OpCode {
 	return s.instructionSet.Encode(&Memory{s.rng.Int() % 2000, s.rng.Int() % 2000, s.rng.Int() % 2000})
 }
 
-func (s *Solver) NewProcessorCore(prog *Program, c chan *ProcessorCore) *ProcessorCore {
+func (s *Solver) NewProcessorCore(prog *Program, outChan chan int, c chan *ProcessorCore) *ProcessorCore {
 	p := &ProcessorCore{}
-	p.Init(s.RegisterLength, s.instructionSet, c)
+	p.Init(s.RegisterLength, s.instructionSet, outChan, c)
 	p.LoadProgram(prog)
 	return p
 }
@@ -61,18 +61,19 @@ outer:
 }
 
 type Solution struct {
+	Id int
 	Fitness int64
 	Heaps []*Memory
 	Champions []*Program
 }
 
-func (s *Solver) Solve(solutionChan chan *Solution, keepGoing chan bool, initialPop []*Program) {
+func (s *Solver) Solve(solutionChan chan *Solution, outChan chan int, keepGoing chan bool, initialPop []*Program) {
 	coreChan := make(chan *ProcessorCore)
 	for _, x := range initialPop {
-		go s.NewProcessorCore(x, coreChan).Run()
+		go s.NewProcessorCore(x, outChan, coreChan).Run()
 	}
 	for y := len(initialPop); y < s.PopulationSize; y++ {
-		go s.NewProcessorCore(s.RandomProgram(), coreChan).Run()
+		go s.NewProcessorCore(s.RandomProgram(), outChan, coreChan).Run()
 	}
 	best := make(ResultList, 0)
 	s.Running = true
@@ -91,6 +92,7 @@ func (s *Solver) Solve(solutionChan chan *Solution, keepGoing chan bool, initial
 
 			count := 0
 			solution := &Solution{}
+			solution.Id = s.Id
 			solution.Fitness = int64(1000000)
 			for _, b := range best {
 				solution.Champions = append(solution.Champions, &b.Core.Program)
@@ -103,19 +105,19 @@ func (s *Solver) Solve(solutionChan chan *Solution, keepGoing chan bool, initial
 			}
 			for _, b := range best {
 				for i := 0; i < (s.PopulationSize/s.BestOfBreed)/3; i++ {
-					co := s.NewProcessorCore(s.MutateProgram(&b.Core.Program), coreChan)
+					co := s.NewProcessorCore(s.MutateProgram(&b.Core.Program, b.Core.ChanceOfMutation), outChan, coreChan)
 					go co.Run()
 					count++
-					co = s.NewProcessorCore(s.CombinePrograms(&b.Core.Program, &best[s.rng.Int()%len(best)].Core.Program), coreChan)
+					co = s.NewProcessorCore(s.CombinePrograms(&b.Core.Program, &best[s.rng.Int()%len(best)].Core.Program), outChan, coreChan)
 					go co.Run()
 					count++
 				}
-				co := s.NewProcessorCore(&b.Core.Program, coreChan)
+				co := s.NewProcessorCore(&b.Core.Program, outChan, coreChan)
 				go co.Run()
 				count++
 			}
 			for count < s.PopulationSize {
-				co := s.NewProcessorCore(s.RandomProgram(), coreChan)
+				co := s.NewProcessorCore(s.RandomProgram(), outChan, coreChan)
 				go co.Run()
 				count++
 			}
@@ -126,10 +128,10 @@ func (s *Solver) Solve(solutionChan chan *Solution, keepGoing chan bool, initial
 
 var seed = rand.New(mt19937.New())
 
-func NewSolver(popSize int, bob int, pl int, rl int, hl int, chance float64, eval func(*Memory, int) int64, is *InstructionSet) *Solver {
+func NewSolver(id int, popSize int, bob int, pl int, rl int, hl int, chance float64, eval func(*Memory, int) int64, is *InstructionSet) *Solver {
 	rng := rand.New(mt19937.New())
 	rng.Seed(time.Now().UnixNano() + int64(seed.Int()))
-	return &Solver{popSize, bob, pl, hl, rl, chance, eval, is, rng, false}
+	return &Solver{id, popSize, bob, pl, hl, rl, chance, eval, is, rng, false}
 }
 
 func (s *Solver) CombinePrograms(prog1 *Program, prog2 *Program) *Program {
@@ -148,16 +150,16 @@ func (s *Solver) CombinePrograms(prog1 *Program, prog2 *Program) *Program {
 	return &prog
 }
 
-func (s *Solver) MutateProgram(prog *Program) *Program {
+func (s *Solver) MutateProgram(prog *Program, chance float64) *Program {
 	outProg := make(Program, 0)
 	for _, x := range *prog {
-		if s.rng.Float64() < s.MutationChance {
+		if s.rng.Float64() < chance {
 			if s.rng.Float64() < 0.1 {
 				for r := s.rng.Int() % 10; r < 10; r++ {
 					outProg = append(outProg, s.RandomOpCode())
 				}
 			}
-			if s.rng.Float64() < 0.1 && len(*prog) > 2 {
+			if s.rng.Float64() < 0.1 && len(outProg) > 0 {
 				continue
 			}
 			decode := s.instructionSet.Decode(x)

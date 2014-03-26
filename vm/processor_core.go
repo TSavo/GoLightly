@@ -6,8 +6,7 @@ package vm
 
 import "fmt"
 
-
-const(
+const (
 	MAX_COST = 300
 	MIN_COST = 25
 )
@@ -22,6 +21,8 @@ type ProcessorCore struct {
 	Stack              Memory
 	InstructionPointer int
 	cost               int
+	ChanceOfMutation   float64
+	OutChan            chan int
 	Program
 	finished chan *ProcessorCore
 }
@@ -30,7 +31,7 @@ func (p *ProcessorCore) Cost() int {
 	progLen := len(p.Program)
 	cost := p.cost
 	return cost + progLen + p.Stack.Len() + p.CallStack.Len()
-	
+
 }
 
 func (p *ProcessorCore) String() string {
@@ -67,7 +68,7 @@ func (t *ProcessorCore) Jump(jump int) {
 	}
 }
 
-func (p *ProcessorCore) Init(registers int, instructions *InstructionSet, finished chan *ProcessorCore) {
+func (p *ProcessorCore) Init(registers int, instructions *InstructionSet, outChan chan int, finished chan *ProcessorCore) {
 	p.Registers = make(Memory, registers)
 	heap := make(Memory, 4)
 	p.Heap = &heap
@@ -77,18 +78,10 @@ func (p *ProcessorCore) Init(registers int, instructions *InstructionSet, finish
 		p.InstructionSet = instructions
 	}
 	p.finished = finished
+	p.OutChan = outChan
+	p.ChanceOfMutation = 0.1
 }
 
-//	Make a copy of the current processor, binding it to the current processor with
-//	the supplied io channel
-func (p *ProcessorCore) Clone(c chan []int) (q *ProcessorCore, i int) {
-	q = new(ProcessorCore)
-	q.Init(len(p.Registers), p.InstructionSet, p.finished)
-	q.IOController = append(q.IOController, c)
-	p.IOController = append(p.IOController, c)
-	i = len(p.IOController) - 1
-	return
-}
 
 func (p *ProcessorCore) LoadProgram(program *Program) {
 	p.Program = make(Program, len(*program))
