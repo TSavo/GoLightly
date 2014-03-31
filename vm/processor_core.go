@@ -1,7 +1,3 @@
-//	TODO:	storing and retrieving pointers to memory buffers
-//	TODO:	cloning should create a comms channel by which the parent and child cores can communicate
-//	TODO:	should always have stdin, stdout and stderr channels
-
 package vm
 
 import "fmt"
@@ -13,30 +9,25 @@ const (
 
 type ProcessorCore struct {
 	*InstructionSet
-	IOController
-	Running            bool
 	Registers          Memory
 	CallStack          Memory
 	Heap               *Memory
 	Stack              Memory
 	InstructionPointer int
-	cost               int
-	ChanceOfMutation   float64
-	OutChan            chan int
-	Program
-	finished chan *ProcessorCore
+	cost               int64
+	Program            *Program
+	ControlChan        chan bool
 }
 
-func (p *ProcessorCore) Cost() int {
-	progLen := len(p.Program)
+func (p *ProcessorCore) Cost() int64 {
+	progLen := int64(len(*p.Program))
 	cost := p.cost
-	return cost + progLen + p.Stack.Len() + p.CallStack.Len()
+	return cost + progLen + int64(p.Stack.Len() + p.CallStack.Len())
 
 }
 
 func (p *ProcessorCore) String() string {
-	return fmt.Sprintf("ProcessorCore [Running: %t, Registers: %v, Heap: %v, Instruction Pointer: %d Cost: %d]",
-		p.Running,
+	return fmt.Sprintf("ProcessorCore [Registers: %v, Heap: %v, Instruction Pointer: %d Cost: %d]",
 		p.Registers,
 		//p.CallStack,
 		p.Heap,
@@ -63,68 +54,56 @@ func (t *ProcessorCore) Jump(jump int) {
 	if t.InstructionPointer < 0 {
 		t.InstructionPointer = 0
 	}
-	if t.InstructionPointer >= len(t.Program) {
-		t.InstructionPointer = t.InstructionPointer % (len(t.Program) - 1)
-	}
+	t.InstructionPointer = t.InstructionPointer % len(*t.Program)
 }
 
-func (p *ProcessorCore) Init(registers int, instructions *InstructionSet, outChan chan int, finished chan *ProcessorCore) {
+func NewProcessorCore(registers int, instructions *InstructionSet, heap *Memory) *ProcessorCore {
+	p := new(ProcessorCore)
 	p.Registers = make(Memory, registers)
-	heap := make(Memory, 4)
-	p.Heap = &heap
 	if instructions == nil {
 		p.InstructionSet = new(InstructionSet)
 	} else {
 		p.InstructionSet = instructions
 	}
-	p.finished = finished
-	p.OutChan = outChan
-	p.ChanceOfMutation = 0.1
+	p.ControlChan = make(chan bool, 1)
+	return p
 }
-
 
 func (p *ProcessorCore) LoadProgram(program *Program) {
-	p.Program = make(Program, len(*program))
-	copy(p.Program, *program)
-	p.InstructionPointer = 0
+	pr := make(Program, len(*program))
+	p.Program = &pr
+	copy(*p.Program, *program)
 }
-func (p *ProcessorCore) ResetState() {
+
+func (p *ProcessorCore) Reset() {
 	p.Registers.Zero()
-	p.Heap.Zero()
 	p.CallStack.Reallocate(0)
 	p.InstructionPointer = 0
 	p.cost = 0
 }
+
 func (p *ProcessorCore) Execute() {
-	if len(p.Program) == 0 {
-		p.InstructionPointer++
-		p.cost++
+	if len(*p.Program) == 0 {
 		return
 	}
 	x := p.InstructionPointer
-	if x >= len(p.Program) {
-		x = x % len(p.Program)
+	if x >= len(*p.Program) {
+		x = x % len(*p.Program)
 	}
-	o := p.Program[x]
-	o.Execute(p)
+	opcode :=(*p.Program)[x]
+	opcode.Instruction.Closure(p, opcode.Data)
 	p.cost++
-	p.InstructionPointer += o.Instruction.Movement
+	p.InstructionPointer += opcode.Instruction.Movement
 }
+
 func (p *ProcessorCore) Run() {
-	//	defer func() {
-	//		if x := recover(); x != nil {
-	//			p.Running = false
-	//			panic(x)
-	//		}
-	//	}()
-	p.Running = true
-	defer func() {
-		p.finished <- p
-	}()
-	for p.Running {
-		p.Execute()
-		if p.Cost() > MAX_COST {
-			p.Running = false
+outer:
+	for {
+		select {
+		case <-p.ControlChan:
+			break outer
+		default:
+			p.Execute()
 		}
 	}
 }

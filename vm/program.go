@@ -2,7 +2,7 @@
 
 package vm
 
-type Program []*OpCode
+type Program []*Operation
 
 func (p *Program) Equals(other *Program) bool {
 	if(len(*p) != len(*other)){
