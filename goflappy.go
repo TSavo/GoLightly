@@ -223,26 +223,28 @@ type FlappyGenerator struct {
 	InstructionSet *vm.InstructionSet
 }
 
+
+
 func (gen *FlappyGenerator) GenerateProgram() *vm.Program {
 	pro := make(vm.Program, 11)
-	if rand.Int() % 100 > 50 {
-	pro[0] = gen.InstructionSet.Compile("set", &vm.Memory{4, 0})
-	pro[1] = gen.InstructionSet.Compile("set", &vm.Memory{2, 3})
-	pro[2] = gen.InstructionSet.Compile("set", &vm.Memory{1, 5})
-	pro[3] = gen.InstructionSet.Compile("set", &vm.Memory{3, rand.Int() % 2000})
-	pro[4] = gen.InstructionSet.Compile("load", &vm.Memory{0, 0})
-	pro[5] = gen.InstructionSet.Compile("subtract", &vm.Memory{3, 0})
-	pro[6] = gen.InstructionSet.Compile("set", &vm.Memory{1, 0})
-	pro[7] = gen.InstructionSet.Compile("jumpIfGreaterThan", &vm.Memory{3, 1})
-	pro[8] = gen.InstructionSet.Compile("flap", &vm.Memory{0, 0})
-	pro[9] = gen.InstructionSet.Compile("sleep", &vm.Memory{0, 0})
-	pro[10] = gen.InstructionSet.Compile("jump", &vm.Memory{0, 0})
-	}else{
+	if rand.Int()%100 > 50 {
+		pro[0] = gen.InstructionSet.Compile("set", 4, 0)
+		pro[1] = gen.InstructionSet.Compile("set", 2, 3)
+		pro[2] = gen.InstructionSet.Compile("set", 1, 5)
+		pro[3] = gen.InstructionSet.Compile("set", 3, rand.Int()%2000)
+		pro[4] = gen.InstructionSet.Compile("load")
+		pro[5] = gen.InstructionSet.Compile("subtract", 3, 0)
+		pro[6] = gen.InstructionSet.Compile("set", 1, 0)
+		pro[7] = gen.InstructionSet.Compile("jumpIfGreaterThan", 3, 1)
+		pro[8] = gen.InstructionSet.Compile("flap")
+		pro[9] = gen.InstructionSet.Compile("sleep")
+		pro[10] = gen.InstructionSet.Compile("jump")
+	} else {
 		for x := 0; x < len(pro); x++ {
-			pro[x] = gen.InstructionSet.Encode(&vm.Memory{rand.Int() % 2000,rand.Int() % 2000,rand.Int() % 2000})
+			pro[x] = gen.InstructionSet.Encode(&vm.Memory{rand.Int() % 2000, rand.Int() % 2000, rand.Int() % 2000})
 		}
 	}
-	
+
 	return &pro
 }
 
