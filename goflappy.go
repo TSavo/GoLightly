@@ -10,11 +10,13 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"sort"
 	"time"
 )
 
 const (
 	POPULATION_SIZE = 100
+	CHAMPION_SIZE   = 10
 	BEST_OF_BREED   = 10
 	PROGRAM_LENGTH  = 50
 	UNIVERSE_SIZE   = 9
@@ -223,7 +225,38 @@ type FlappyGenerator struct {
 	InstructionSet *vm.InstructionSet
 }
 
+type Champion struct {
+	Reward int64
+	Programs []vm.Program
+}
 
+type Champions []Champion
+
+func (s Champions) Len() int      { return len(s) }
+func (s Champions) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s Champions) Less(i, j int) bool {
+	return s[i].Reward > s[j].Reward
+}
+
+func CollectBest(solutionChan chan *vm.Solution, populationInfluxChan chan []vm.Program) {
+	for {
+		best := make(Champions, CHAMPION_SIZE)
+		for x := 0; x < CHAMPION_SIZE; x++ {
+			solution := <-solutionChan
+			champ := Champion{(*solution.Processors)[0].Reward, make([]vm.Program, len(*solution.Processors))}
+			for y := 0; y < len(*solution.Processors); y++ {
+				prog := make(vm.Program, len(*(*solution.Processors)[y].Core.Program))
+				copy(prog, *(*solution.Processors)[y].Core.Program)
+				champ.Programs[y] = prog
+			}
+			best[x] = champ
+		}
+		sort.Sort(best)
+		go func(champs []vm.Program) {
+			populationInfluxChan <- champs
+		}(best[0].Programs)
+	}
+}
 
 func (gen *FlappyGenerator) GenerateProgram() *vm.Program {
 	pro := make(vm.Program, 11)
@@ -249,6 +282,8 @@ func (gen *FlappyGenerator) GenerateProgram() *vm.Program {
 }
 
 var id = 0
+var populationInfluxChan chan []vm.Program = make(chan []vm.Program, 1)
+var solutionChan chan *vm.Solution = make(chan *vm.Solution, 1)
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
@@ -298,7 +333,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 	stopChan := make(chan bool, 1)
 	go func() {
-		solver.SolveOneAtATime(&heap, nil, nil, control, stopChan, nil, nil)
+		solver.SolveOneAtATime(&heap, nil, solutionChan, control, stopChan, populationInfluxChan, nil)
 	}()
 
 	c.reader(inFlap)
