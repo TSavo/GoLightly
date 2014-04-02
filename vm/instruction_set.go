@@ -106,3 +106,12 @@ func (i *InstructionSet) Decompile(op *Operation) string {
 	}
 	return s
 }
+
+func (i *InstructionSet) DecompileProgram(p Program) (prog string) {
+	prog = ""
+	for _, v := range p {
+		prog += i.Decompile(v) + "\n"
+	}
+	return
+
+}

@@ -23,3 +23,4 @@ func (p *Program) Hashcode() int {
 	}
 	return h
 }
+

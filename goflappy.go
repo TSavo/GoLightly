@@ -6,9 +6,11 @@ import (
 	"github.com/tsavo/golightly/intutil"
 	"github.com/tsavo/golightly/vm"
 	"io"
+	"log"
 	"math/rand"
 	"net"
 	"net/http"
+	"os/user"
 	"runtime"
 	"time"
 )
@@ -223,8 +225,6 @@ type FlappyGenerator struct {
 	InstructionSet *vm.InstructionSet
 }
 
-
-
 func (gen *FlappyGenerator) GenerateProgram() *vm.Program {
 	pro := make(vm.Program, 11)
 	if rand.Int()%100 > 50 {
@@ -305,11 +305,21 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	stopChan <- false
 }
 
+func loadProgram(projectName string, id int) vm.Program {
+	usr, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(usr.HomeDir)
+	return nil
+}
+
 func main() {
+	loadProgram("", 0)
 	runtime.LockOSThread()
 	go h.run()
 	vis := make(chan *vm.Solution)
-
+	
 	go func() {
 		http.HandleFunc("/ws", wsHandler)
 		if err := http.ListenAndServe(":3000", nil); err != nil {
