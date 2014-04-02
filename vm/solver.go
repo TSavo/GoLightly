@@ -68,7 +68,7 @@ func (s *Solver) NewProcessorCore(prog *Program, heap *Memory) *ProcessorCore {
 	return p
 }
 
-func (s *Solver) SolveOneAtATime(sharedMemory *Memory, coreChan chan *ProcessorCore, solutionChan chan *Solution, controlChan chan bool, stopChan chan bool, populationInfluxChan chan []*Program, initialPop []*Program) {
+func (s *Solver) SolveOneAtATime(sharedMemory *Memory, coreChan chan *ProcessorCore, solutionChan chan *Solution, controlChan chan bool, stopChan chan bool, populationInfluxChan chan []Program, initialPop []*Program) {
 	processors := make(ProcessorList, s.PopulationSize)
 	for x := 0; x < len(initialPop); x++ {
 		c := s.NewProcessorCore(initialPop[x], sharedMemory)
@@ -127,7 +127,7 @@ outer:
 		select {
 		case inFlux := <-populationInfluxChan:
 			for x := 0; x < len(inFlux) && count < len(rest); x++ {
-				rest[count].Core.LoadProgram(inFlux[x])
+				rest[count].Core.LoadProgram(&inFlux[x])
 				count++
 			}
 		default:
