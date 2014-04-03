@@ -1,6 +1,9 @@
 package vm
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
 const (
 	MAX_COST = 300
@@ -22,7 +25,7 @@ type ProcessorCore struct {
 func (p *ProcessorCore) Cost() int64 {
 	progLen := int64(len(*p.Program))
 	cost := p.cost
-	return cost + progLen + int64(p.Stack.Len() + p.CallStack.Len())
+	return cost + progLen + int64(p.Stack.Len()+p.CallStack.Len())
 
 }
 
@@ -73,6 +76,9 @@ func (p *ProcessorCore) LoadProgram(program *Program) {
 	pr := make(Program, len(*program))
 	p.Program = &pr
 	copy(*p.Program, *program)
+	for i, x := range *program {
+		(*program)[i] = p.InstructionSet.Encode(p.InstructionSet.Decode(x))
+	}
 }
 
 func (p *ProcessorCore) Reset() {
@@ -90,7 +96,7 @@ func (p *ProcessorCore) Execute() {
 	if x >= len(*p.Program) {
 		x = x % len(*p.Program)
 	}
-	opcode :=(*p.Program)[x]
+	opcode := (*p.Program)[x]
 	opcode.Instruction.Closure(p, opcode.Data)
 	p.cost++
 	p.InstructionPointer += opcode.Instruction.Movement
@@ -99,6 +105,7 @@ func (p *ProcessorCore) Execute() {
 func (p *ProcessorCore) Run() {
 outer:
 	for {
+		runtime.Gosched()
 		select {
 		case <-p.ControlChan:
 			break outer

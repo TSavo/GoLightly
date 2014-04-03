@@ -244,19 +244,22 @@ func CollectBest(solutionChan chan *vm.Solution, populationInfluxChan chan []vm.
 	for {
 		best := make(Champions, CHAMPION_SIZE)
 		for x := 0; x < CHAMPION_SIZE; x++ {
+			runtime.Gosched()
 			solution := <-solutionChan
 			champ := Champion{(*solution.Processors)[0].Reward, make([]vm.Program, len(*solution.Processors))}
 			for y := 0; y < len(*solution.Processors); y++ {
-				prog := make(vm.Program, len(*(*solution.Processors)[y].Core.Program))
-				copy(prog, *(*solution.Processors)[y].Core.Program)
-				champ.Programs[y] = prog
+				//prog := make(vm.Program, len(*(*solution.Processors)[y].Core.Program))
+				//copy(prog, *(*solution.Processors)[y].Core.Program)
+				champ.Programs[y] = *(*solution.Processors)[y].Core.Program
 			}
 			best[x] = champ
+			continue
 		}
-		sort.Sort(best)
-		go func(champs []vm.Program) {
-			populationInfluxChan <- champs
-		}(best[0].Programs)
+		go func(champs Champions) {
+			sort.Sort(champs)
+			fmt.Printf("Champs: %v\n", champs[0])
+			populationInfluxChan <- champs[0].Programs
+		}(best)
 	}
 }
 
@@ -284,8 +287,8 @@ func (gen *FlappyGenerator) GenerateProgram() *vm.Program {
 }
 
 var id = 0
-var populationInfluxChan chan []vm.Program = make(chan []vm.Program, 1)
-var solutionChan chan *vm.Solution = make(chan *vm.Solution, 1)
+var populationInfluxChan chan []vm.Program = make(chan []vm.Program, 100)
+var solutionChan chan *vm.Solution = make(chan *vm.Solution, 100)
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
@@ -353,7 +356,6 @@ func loadProgram(projectName string, id int) vm.Program {
 
 func main() {
 	loadProgram("", 0)
-	runtime.LockOSThread()
 	go h.run()
 	vis := make(chan *vm.Solution)
 	
@@ -380,5 +382,6 @@ func main() {
 		}
 	}()
 
+	go func(){CollectBest(solutionChan, populationInfluxChan)}()
 	<-make(chan int)
 }

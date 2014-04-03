@@ -86,9 +86,9 @@ func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
 func (i *InstructionSet) Compile(name string, args ...int) *Operation {
 	switch len(args) {
 	case 0:
-		return i.CompileMemory(name, &Memory{})
+		return i.CompileMemory(name, &Memory{0,0})
 	case 1:
-		return i.CompileMemory(name, &Memory{args[0]})
+		return i.CompileMemory(name, &Memory{args[0],0})
 	case 2:
 		return i.CompileMemory(name, &Memory{args[0], args[1]})
 	default:
