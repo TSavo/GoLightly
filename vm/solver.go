@@ -57,9 +57,14 @@ outer:
 	(*s) = res
 }
 
+type SolutionProgram struct {
+	Reward int64
+	Program string
+}
+
 type Solution struct {
 	Id         int
-	Processors *ProcessorList
+	Solutions	[]SolutionProgram
 }
 
 func (s *Solver) NewProcessorCore(prog *Program, heap *Memory) *ProcessorCore {
@@ -68,7 +73,7 @@ func (s *Solver) NewProcessorCore(prog *Program, heap *Memory) *ProcessorCore {
 	return p
 }
 
-func (s *Solver) SolveOneAtATime(sharedMemory *Memory, coreChan chan *ProcessorCore, solutionChan chan *Solution, controlChan chan bool, stopChan chan bool, populationInfluxChan chan []Program, initialPop []*Program) {
+func (s *Solver) SolveOneAtATime(sharedMemory *Memory, coreChan chan *ProcessorCore, solutionChan chan *Solution, controlChan chan bool, stopChan chan bool, populationInfluxChan chan []string, initialPop []*Program) {
 	processors := make(ProcessorList, s.PopulationSize)
 	for x := 0; x < len(initialPop); x++ {
 		c := s.NewProcessorCore(initialPop[x], sharedMemory)
@@ -112,10 +117,13 @@ outer:
 		best := processors[:s.BestOfBreed]
 		fmt.Println(best)
 		rest := processors[s.BestOfBreed:]
-		bestSolution := make(ProcessorList, len(best))
-		copy(bestSolution, best)
+		//
+		bestPrograms := make([]SolutionProgram, len(best))
+		for i, x := range best {
+			bestPrograms[i] = SolutionProgram{x.Reward, x.Core.GetProgramString()}
+		}
 		select {
-		case solutionChan <- &Solution{s.Id, &bestSolution}:
+		case solutionChan <- &Solution{s.Id, bestPrograms}:
 		default:
 		}
 		select {
@@ -127,7 +135,7 @@ outer:
 		select {
 		case inFlux := <-populationInfluxChan:
 			for x := 0; x < len(inFlux) && count < len(rest); x++ {
-				rest[count].Core.LoadProgram(&inFlux[x])
+				rest[count].Core.CompileAndLoad(inFlux[x])
 				count++
 			}
 		default:

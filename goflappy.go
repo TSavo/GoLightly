@@ -20,7 +20,7 @@ const (
 	POPULATION_SIZE = 100
 	CHAMPION_SIZE   = 10
 	BEST_OF_BREED   = 10
-	PROGRAM_LENGTH  = 50
+	PROGRAM_LENGTH  = 12
 	UNIVERSE_SIZE   = 9
 	ROUND_LENGTH    = 10
 )
@@ -228,8 +228,8 @@ type FlappyGenerator struct {
 }
 
 type Champion struct {
-	Reward int64
-	Programs []vm.Program
+	Reward   int64
+	Programs []string
 }
 
 type Champions []Champion
@@ -240,17 +240,15 @@ func (s Champions) Less(i, j int) bool {
 	return s[i].Reward > s[j].Reward
 }
 
-func CollectBest(solutionChan chan *vm.Solution, populationInfluxChan chan []vm.Program) {
+func CollectBest(solutionChan chan *vm.Solution, populationInfluxChan chan []string) {
 	for {
 		best := make(Champions, CHAMPION_SIZE)
 		for x := 0; x < CHAMPION_SIZE; x++ {
 			runtime.Gosched()
 			solution := <-solutionChan
-			champ := Champion{(*solution.Processors)[0].Reward, make([]vm.Program, len(*solution.Processors))}
-			for y := 0; y < len(*solution.Processors); y++ {
-				//prog := make(vm.Program, len(*(*solution.Processors)[y].Core.Program))
-				//copy(prog, *(*solution.Processors)[y].Core.Program)
-				champ.Programs[y] = *(*solution.Processors)[y].Core.Program
+			champ := Champion{solution.Solutions[0].Reward, make([]string, len(solution.Solutions))}
+			for y := 0; y < len(solution.Solutions); y++ {
+				champ.Programs[y] = solution.Solutions[y].Program
 			}
 			best[x] = champ
 			continue
@@ -264,30 +262,30 @@ func CollectBest(solutionChan chan *vm.Solution, populationInfluxChan chan []vm.
 }
 
 func (gen *FlappyGenerator) GenerateProgram() *vm.Program {
-	pro := make(vm.Program, 11)
 	if rand.Int()%100 > 50 {
-		pro[0] = gen.InstructionSet.Compile("set", 4, 0)
-		pro[1] = gen.InstructionSet.Compile("set", 2, 3)
-		pro[2] = gen.InstructionSet.Compile("set", 1, 5)
-		pro[3] = gen.InstructionSet.Compile("set", 3, rand.Int()%2000)
-		pro[4] = gen.InstructionSet.Compile("load")
-		pro[5] = gen.InstructionSet.Compile("subtract", 3, 0)
-		pro[6] = gen.InstructionSet.Compile("set", 1, 0)
-		pro[7] = gen.InstructionSet.Compile("jumpIfGreaterThan", 3, 1)
-		pro[8] = gen.InstructionSet.Compile("flap")
-		pro[9] = gen.InstructionSet.Compile("sleep")
-		pro[10] = gen.InstructionSet.Compile("jump")
+		pr := "set 4, 0\n"
+		pr += "set 2, 3\n"
+		pr += "set 1, 5\n"
+		pr += "set 3, " + string(rand.Int()%2000) + "\n"
+		pr += "load\n"
+		pr += "subtract 3, 0\n"
+		pr += "set 1, 0\n"
+		pr += "jumpIfGreaterThan 3, 1\n"
+		pr += "flap\n"
+		pr += "sleep\n"
+		pr += "jump\n"
+		return gen.InstructionSet.CompileProgram(pr)
 	} else {
+		pro := make(vm.Program, PROGRAM_LENGTH)
 		for x := 0; x < len(pro); x++ {
 			pro[x] = gen.InstructionSet.Encode(&vm.Memory{rand.Int() % 2000, rand.Int() % 2000, rand.Int() % 2000})
 		}
+		return &pro
 	}
-
-	return &pro
 }
 
 var id = 0
-var populationInfluxChan chan []vm.Program = make(chan []vm.Program, 100)
+var populationInfluxChan chan []string = make(chan []string, 100)
 var solutionChan chan *vm.Solution = make(chan *vm.Solution, 100)
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -358,7 +356,7 @@ func main() {
 	loadProgram("", 0)
 	go h.run()
 	vis := make(chan *vm.Solution)
-	
+
 	go func() {
 		http.HandleFunc("/ws", wsHandler)
 		if err := http.ListenAndServe(":3000", nil); err != nil {
@@ -382,6 +380,6 @@ func main() {
 		}
 	}()
 
-	go func(){CollectBest(solutionChan, populationInfluxChan)}()
+	go func() { CollectBest(solutionChan, populationInfluxChan) }()
 	<-make(chan int)
 }

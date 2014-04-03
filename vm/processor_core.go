@@ -81,6 +81,14 @@ func (p *ProcessorCore) LoadProgram(program *Program) {
 	}
 }
 
+func (p *ProcessorCore) CompileAndLoad(prog string) {
+	p.LoadProgram(p.InstructionSet.CompileProgram(prog))
+}
+
+func (p *ProcessorCore) GetProgramString() string {
+	return p.InstructionSet.DecompileProgram(p.Program)
+}
+
 func (p *ProcessorCore) Reset() {
 	p.Registers.Zero()
 	p.CallStack.Reallocate(0)

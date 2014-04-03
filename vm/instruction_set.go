@@ -2,7 +2,8 @@ package vm
 
 import (
 	"fmt"
-	"reflect"
+	"strconv"
+	"strings"
 )
 
 type Operation struct {
@@ -16,10 +17,6 @@ func (o Operation) String() string {
 
 func (o Operation) Similar(p Operation) bool {
 	return o.Instruction == p.Instruction
-}
-
-func (o Operation) Identical(p Operation) bool {
-	return reflect.DeepEqual(o, p)
 }
 
 type Assembler interface {
@@ -86,9 +83,9 @@ func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
 func (i *InstructionSet) Compile(name string, args ...int) *Operation {
 	switch len(args) {
 	case 0:
-		return i.CompileMemory(name, &Memory{0,0})
+		return i.CompileMemory(name, &Memory{0, 0})
 	case 1:
-		return i.CompileMemory(name, &Memory{args[0],0})
+		return i.CompileMemory(name, &Memory{args[0], 0})
 	case 2:
 		return i.CompileMemory(name, &Memory{args[0], args[1]})
 	default:
@@ -98,20 +95,45 @@ func (i *InstructionSet) Compile(name string, args ...int) *Operation {
 
 func (i *InstructionSet) Decompile(op *Operation) string {
 	s := op.Instruction.Name
-	if(op.Data.Len() > 0){
+	if op.Data.Len() > 0 {
 		s += " " + string(op.Data.Get(0))
 	}
-	if(op.Data.Len() > 1){
+	if op.Data.Len() > 1 {
 		s += ", " + string(op.Data.Get(1))
 	}
 	return s
 }
 
-func (i *InstructionSet) DecompileProgram(p Program) (prog string) {
+func (i *InstructionSet) DecompileProgram(p *Program) (prog string) {
 	prog = ""
-	for _, v := range p {
+	for _, v := range *p {
 		prog += i.Decompile(v) + "\n"
 	}
 	return
+}
 
+func (i *InstructionSet) CompileProgram(s string) *Program {
+	p := make(Program, 0)
+	for _, x := range strings.Split(s, "\n") {
+		o := strings.Split(x, " ")
+		if len(o) == 1 {
+			p = append(p, i.Compile(o[0]))
+		} else if len(o) == 2 {
+			c := strings.Split(o[1], ",")
+			if len(c) == 1 {
+				arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
+				p = append(p, i.Compile(o[0], arg0))
+			} else {
+				arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
+				arg1, _ := strconv.Atoi(strings.TrimSpace(c[1]))
+				p = append(p, i.Compile(o[0], arg0, arg1))
+			}
+		} else {
+			c := strings.Split(o[1], ",")
+			arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
+			arg1, _ := strconv.Atoi(strings.TrimSpace(o[2]))
+			p = append(p, i.Compile(o[0], arg0, arg1))
+		}
+	}
+	return &p
 }
