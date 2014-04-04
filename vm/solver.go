@@ -101,7 +101,7 @@ outer:
 			case coreChan <- (*processors[count]).Core:
 			default:
 			}
-			fmt.Println(count)
+			fmt.Printf("#%d: %d\n", s.Id, count)
 			(*processors[count]).Core.Run()
 			(*processors[count]).Reward = s.Evaluate((*processors[count]).Core)
 			count++
@@ -134,6 +134,7 @@ outer:
 		count = 0
 		select {
 		case inFlux := <-populationInfluxChan:
+			fmt.Println("INFLUX!")
 			for x := 0; x < len(inFlux) && count < len(rest); x++ {
 				rest[count].Core.CompileAndLoad(inFlux[x])
 				count++

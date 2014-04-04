@@ -80,28 +80,22 @@ func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
 	panic("No such instruction")
 }
 
-func (i *InstructionSet) Compile(name string, args ...int) *Operation {
+func (i *InstructionSet) Compile(name string, args ...int) (o *Operation) {
 	switch len(args) {
 	case 0:
-		return i.CompileMemory(name, &Memory{0, 0})
+		o = i.CompileMemory(name, &Memory{0, 0})
 	case 1:
-		return i.CompileMemory(name, &Memory{args[0], 0})
+		o = i.CompileMemory(name, &Memory{args[0], 0})
 	case 2:
-		return i.CompileMemory(name, &Memory{args[0], args[1]})
+		o = i.CompileMemory(name, &Memory{args[0], args[1]})
 	default:
 		panic("Arguments > 2 is not supported")
 	}
+	return
 }
 
 func (i *InstructionSet) Decompile(op *Operation) string {
-	s := op.Instruction.Name
-	if op.Data.Len() > 0 {
-		s += " " + string(op.Data.Get(0))
-	}
-	if op.Data.Len() > 1 {
-		s += ", " + string(op.Data.Get(1))
-	}
-	return s
+	return op.Instruction.Name + " " + strconv.Itoa(op.Data.Get(0)) + ", " + strconv.Itoa(op.Data.Get(1))
 }
 
 func (i *InstructionSet) DecompileProgram(p *Program) (prog string) {
@@ -116,6 +110,9 @@ func (i *InstructionSet) CompileProgram(s string) *Program {
 	p := make(Program, 0)
 	for _, x := range strings.Split(s, "\n") {
 		o := strings.Split(x, " ")
+		if len(strings.TrimSpace(o[0])) == 0 {
+			continue
+		}
 		if len(o) == 1 {
 			p = append(p, i.Compile(o[0]))
 		} else if len(o) == 2 {

@@ -14,11 +14,12 @@ import (
 	"runtime"
 	"sort"
 	"time"
+	"strconv"
 )
 
 const (
 	POPULATION_SIZE = 100
-	CHAMPION_SIZE   = 10
+	CHAMPION_SIZE   = 3
 	BEST_OF_BREED   = 10
 	PROGRAM_LENGTH  = 12
 	UNIVERSE_SIZE   = 9
@@ -217,8 +218,8 @@ type FlappyEvaluator struct {
 	reward int64
 }
 
-func (eval *FlappyEvaluator) Evaluate(*vm.ProcessorCore) int64 {
-	x := eval.reward
+func (eval *FlappyEvaluator) Evaluate(p *vm.ProcessorCore) int64 {
+	x := eval.reward - (p.Cost() / 10000)
 	eval.reward = 0
 	return x
 }
@@ -262,11 +263,11 @@ func CollectBest(solutionChan chan *vm.Solution, populationInfluxChan chan []str
 }
 
 func (gen *FlappyGenerator) GenerateProgram() *vm.Program {
-	if rand.Int()%100 > 50 {
+	if rand.Int() % 10 < 5 {
 		pr := "set 4, 0\n"
 		pr += "set 2, 3\n"
 		pr += "set 1, 5\n"
-		pr += "set 3, " + string(rand.Int()%2000) + "\n"
+		pr += "set 3, " + strconv.Itoa(rand.Int()%10000) + "\n"
 		pr += "load\n"
 		pr += "subtract 3, 0\n"
 		pr += "set 1, 0\n"
@@ -280,8 +281,8 @@ func (gen *FlappyGenerator) GenerateProgram() *vm.Program {
 		for x := 0; x < len(pro); x++ {
 			pro[x] = gen.InstructionSet.Encode(&vm.Memory{rand.Int() % 2000, rand.Int() % 2000, rand.Int() % 2000})
 		}
-		return &pro
-	}
+//		return &pro
+//	}
 }
 
 var id = 0
