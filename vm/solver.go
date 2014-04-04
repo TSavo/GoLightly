@@ -58,13 +58,13 @@ outer:
 }
 
 type SolutionProgram struct {
-	Reward int64
+	Reward  int64
 	Program string
 }
 
 type Solution struct {
-	Id         int
-	Solutions	[]SolutionProgram
+	Id       int
+	Programs []SolutionProgram
 }
 
 func (s *Solver) NewProcessorCore(prog *Program, heap *Memory) *ProcessorCore {

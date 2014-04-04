@@ -246,9 +246,9 @@ func CollectBest(solutionChan chan *vm.Solution, populationInfluxChan chan []str
 		for x := 0; x < CHAMPION_SIZE; x++ {
 			runtime.Gosched()
 			solution := <-solutionChan
-			champ := Champion{solution.Solutions[0].Reward, make([]string, len(solution.Solutions))}
-			for y := 0; y < len(solution.Solutions); y++ {
-				champ.Programs[y] = solution.Solutions[y].Program
+			champ := Champion{solution.Programs[0].Reward, make([]string, len(solution.Programs))}
+			for y := 0; y < len(solution.Programs); y++ {
+				champ.Programs[y] = solution.Programs[y].Program
 			}
 			best[x] = champ
 			continue
