@@ -24,3 +24,10 @@ func (p *Program) Hashcode() int {
 	return h
 }
 
+func (p *Program) Decompile() string {
+	pro := ""
+	for _, x := range *p {
+		pro += x.String() + "\n"
+	}
+	return pro
+}

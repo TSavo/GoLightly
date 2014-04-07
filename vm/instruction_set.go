@@ -12,11 +12,15 @@ type Operation struct {
 }
 
 func (o Operation) String() string {
-	return fmt.Sprintf("%v %v, %v\n", o.Instruction, o.Data.Get(0), o.Data.Get(1))
+	return fmt.Sprintf("%v %v, %v\n", o.Instruction.Name, o.Data.Get(0), o.Data.Get(1))
 }
 
 func (o Operation) Similar(p Operation) bool {
 	return o.Instruction == p.Instruction
+}
+
+func (o *Operation) Decode() *Memory {
+	return &Memory{o.Instruction.id, o.Data.Get(0), o.Data.Get(1)}
 }
 
 type Assembler interface {
@@ -59,18 +63,22 @@ func (i *InstructionSet) Movement(name string, closure func(*ProcessorCore, *Mem
 func (i *InstructionSet) Operator(name string, closure func(*ProcessorCore, *Memory)) {
 	i.Define(name, 1, closure)
 }
-func (i *InstructionSet) Assemble(id int, data *Memory) Operation {
+
+func (i *InstructionSet) Assemble(id int, data *Memory) *Operation {
 	if op, ok := (*i)[id]; ok {
-		return Operation{Instruction: op, Data: data}
+		return &Operation{Instruction: op, Data: data}
 	}
 	panic("No such Instruction")
 }
+
 func (i *InstructionSet) Encode(m *Memory) *Operation {
-	return &Operation{(*i)[m.Get(0)%i.Len()], &Memory{m.Get(1), m.Get(2)}}
+	return i.Assemble(m.Get(0)%i.Len(), &Memory{m.Get(1), m.Get(2)})
 }
-func (i *InstructionSet) Decode(o *Operation) *Memory {
-	return &Memory{o.Instruction.id, o.Data.Get(0), o.Data.Get(1)}
+
+func (s *InstructionSet) RandomOperation() *Operation {
+	return s.Encode(&Memory{rng.Int(), rng.Int(), rng.Int()})
 }
+
 func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
 	for x, n := range *i {
 		if n.Name == name {
@@ -90,18 +98,6 @@ func (i *InstructionSet) Compile(name string, args ...int) (o *Operation) {
 		o = i.CompileMemory(name, &Memory{args[0], args[1]})
 	default:
 		panic("Arguments > 2 is not supported")
-	}
-	return
-}
-
-func (i *InstructionSet) Decompile(op *Operation) string {
-	return op.Instruction.Name + " " + strconv.Itoa(op.Data.Get(0)) + ", " + strconv.Itoa(op.Data.Get(1))
-}
-
-func (i *InstructionSet) DecompileProgram(p *Program) (prog string) {
-	prog = ""
-	for _, v := range *p {
-		prog += i.Decompile(v) + "\n"
 	}
 	return
 }

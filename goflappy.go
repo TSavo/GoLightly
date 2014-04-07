@@ -13,8 +13,8 @@ import (
 	"os/user"
 	"runtime"
 	"sort"
-	"time"
 	"strconv"
+	"time"
 )
 
 const (
@@ -135,7 +135,7 @@ func CombinePrograms(s1 []*vm.Program, s2 []*vm.Program) []*vm.Program {
 	return prog
 }
 
-func handleConnection(conn *net.Conn, solutionChan *chan *vm.Solution) {
+func handleConnection(conn *net.Conn, SolverReportChan *chan *vm.SolverReport) {
 	for {
 		var one []byte
 		(*conn).SetReadDeadline(time.Now())
@@ -241,15 +241,15 @@ func (s Champions) Less(i, j int) bool {
 	return s[i].Reward > s[j].Reward
 }
 
-func CollectBest(solutionChan chan *vm.Solution, populationInfluxChan chan []string) {
+func CollectBest(solverReportChan chan *vm.SolverReport, populationInfluxChan chan []string) {
 	for {
 		best := make(Champions, CHAMPION_SIZE)
 		for x := 0; x < CHAMPION_SIZE; x++ {
 			runtime.Gosched()
-			solution := <-solutionChan
-			champ := Champion{solution.Programs[0].Reward, make([]string, len(solution.Programs))}
-			for y := 0; y < len(solution.Programs); y++ {
-				champ.Programs[y] = solution.Programs[y].Program
+			solverReport := <-solverReportChan
+			champ := Champion{solverReport.SolutionList[0].Reward, make([]string, len(solverReport.SolutionList))}
+			for y := 0; y < len(solverReport.SolutionList); y++ {
+				champ.Programs[y] = solverReport.SolutionList[y].Program
 			}
 			best[x] = champ
 			continue
@@ -262,32 +262,41 @@ func CollectBest(solutionChan chan *vm.Solution, populationInfluxChan chan []str
 	}
 }
 
-func (gen *FlappyGenerator) GenerateProgram() *vm.Program {
-	if rand.Int() % 10 < 5 {
-		pr := "set 4, 0\n"
-		pr += "set 2, 3\n"
-		pr += "set 1, 5\n"
-		pr += "set 3, " + strconv.Itoa(rand.Int()%10000) + "\n"
-		pr += "load\n"
-		pr += "subtract 3, 0\n"
-		pr += "set 1, 0\n"
-		pr += "jumpIfGreaterThan 3, 1\n"
-		pr += "flap\n"
-		pr += "sleep\n"
-		pr += "jump\n"
-		return gen.InstructionSet.CompileProgram(pr)
-	} else {
-		pro := make(vm.Program, PROGRAM_LENGTH)
-		for x := 0; x < len(pro); x++ {
-			pro[x] = gen.InstructionSet.Encode(&vm.Memory{rand.Int() % 2000, rand.Int() % 2000, rand.Int() % 2000})
-		}
-//		return &pro
-//	}
+
+type FlappyBreeder struct {
+	PopulationSize int
+}
+
+func (flap FlappyBreeder) Breed(seeds []string) []string {
+	progs := make([]string, 10)
+	for i, _ := range progs {
+		progs[i] = GenerateProgram()
+	}
+	return progs
+}
+
+func GetFlappyBreeder() FlappyBreeder {
+	return FlappyBreeder{}
+}
+
+func GenerateProgram() string {
+	pr := "set 4, 0\n"
+	pr += "set 2, 3\n"
+	pr += "set 1, 5\n"
+	pr += "set 3, " + strconv.Itoa(rand.Int()%10000) + "\n"
+	pr += "load\n"
+	pr += "subtract 3, 0\n"
+	pr += "set 1, 0\n"
+	pr += "jumpIfGreaterThan 3, 1\n"
+	pr += "flap\n"
+	pr += "sleep\n"
+	pr += "jump\n"
+	return pr
 }
 
 var id = 0
 var populationInfluxChan chan []string = make(chan []string, 100)
-var solutionChan chan *vm.Solution = make(chan *vm.Solution, 100)
+var SolverReportChan chan *vm.SolverReport = make(chan *vm.SolverReport, 100)
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
@@ -302,10 +311,13 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	defer func() { h.unregister <- c }()
 	go c.writer()
 	outChan := make(chan bool, 1)
-	flappyEval := new(FlappyEvaluator)
 	is := DefineInstructions(outChan)
-	flappyGen := &FlappyGenerator{is}
-	solver := vm.NewSolver(id, POPULATION_SIZE, BEST_OF_BREED, 4, 0.1, is, flappyGen, flappyEval)
+	terminationCondition := vm.NewChannelTerminationCondition()
+	br := &FlappyBreeder{25}
+	breeder := vm.NewMultiBreeder(GetFlappyBreeder(), vm.NewRandomBreeder(25, 50, is), vm.NewMutationBreeder(25, 0.1, is), vm.NewCrossoverBreeder(25))
+	flappyEval := new(FlappyEvaluator)
+	selector := vm.And(vm.NewTopXSelector(10), vm.NewTournamantSelector(10))
+	solver := vm.NewSolver(id, 4, is, terminationCondition, &breeder, flappyEval, selector)
 	id++
 	go func() {
 		for {
@@ -337,7 +349,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 	stopChan := make(chan bool, 1)
 	go func() {
-		solver.SolveOneAtATime(&heap, nil, solutionChan, control, stopChan, populationInfluxChan, nil)
+		solver.SolveOneAtATime(&heap, nil, SolverReportChan, control, stopChan, populationInfluxChan, nil)
 	}()
 
 	c.reader(inFlap)
@@ -356,7 +368,7 @@ func loadProgram(projectName string, id int) vm.Program {
 func main() {
 	loadProgram("", 0)
 	go h.run()
-	vis := make(chan *vm.Solution)
+	vis := make(chan *vm.SolverReport)
 
 	go func() {
 		http.HandleFunc("/ws", wsHandler)
@@ -381,6 +393,6 @@ func main() {
 		}
 	}()
 
-	go func() { CollectBest(solutionChan, populationInfluxChan) }()
+	go func() { CollectBest(SolverReportChan, populationInfluxChan) }()
 	<-make(chan int)
 }

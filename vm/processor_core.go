@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 	"runtime"
+	"time"
 )
 
 const (
@@ -20,6 +21,8 @@ type ProcessorCore struct {
 	cost               int64
 	Program            *Program
 	ControlChan        chan bool
+	StartTime          int64
+	TerminationCondition      *TerminationCondition
 }
 
 func (p *ProcessorCore) Cost() int64 {
@@ -60,8 +63,9 @@ func (t *ProcessorCore) Jump(jump int) {
 	t.InstructionPointer = t.InstructionPointer % len(*t.Program)
 }
 
-func NewProcessorCore(registers int, instructions *InstructionSet, heap *Memory) *ProcessorCore {
+func NewProcessorCore(registers int, instructions *InstructionSet, heap *Memory, stop *TerminationCondition) *ProcessorCore {
 	p := new(ProcessorCore)
+	p.TerminationCondition = stop
 	p.Registers = make(Memory, registers)
 	if instructions == nil {
 		p.InstructionSet = new(InstructionSet)
@@ -76,9 +80,6 @@ func (p *ProcessorCore) LoadProgram(program *Program) {
 	pr := make(Program, len(*program))
 	p.Program = &pr
 	copy(*p.Program, *program)
-	for i, x := range *program {
-		(*program)[i] = p.InstructionSet.Encode(p.InstructionSet.Decode(x))
-	}
 }
 
 func (p *ProcessorCore) CompileAndLoad(prog string) {
@@ -86,7 +87,7 @@ func (p *ProcessorCore) CompileAndLoad(prog string) {
 }
 
 func (p *ProcessorCore) GetProgramString() string {
-	return p.InstructionSet.DecompileProgram(p.Program)
+	return p.Program.Decompile()
 }
 
 func (p *ProcessorCore) Reset() {
@@ -111,14 +112,12 @@ func (p *ProcessorCore) Execute() {
 }
 
 func (p *ProcessorCore) Run() {
-outer:
+	p.StartTime = time.Now().UnixNano()
 	for {
 		runtime.Gosched()
-		select {
-		case <-p.ControlChan:
-			break outer
-		default:
-			p.Execute()
+		if (*p.TerminationCondition).ShouldTerminate(p) {
+			return
 		}
+		p.Execute()
 	}
 }
