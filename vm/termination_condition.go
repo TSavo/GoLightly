@@ -16,17 +16,17 @@ type NotTerminationCondition struct {
 	NotCondition *TerminationCondition
 }
 
-func And(term... *TerminationCondition) *AndTerminationCondition {
+func AndTerminate(term... *TerminationCondition) *AndTerminationCondition {
 	out := AndTerminationCondition(term)
 	return &out
 }
 
-func Or(term... *TerminationCondition) *OrTerminationCondition {
+func OrTerminate(term... *TerminationCondition) *OrTerminationCondition {
 	out := OrTerminationCondition(term)
 	return &out
 }
 
-func Not(term *TerminationCondition) *NotTerminationCondition {
+func NotTerminate(term *TerminationCondition) *NotTerminationCondition {
 	return &NotTerminationCondition{term}
 }
 

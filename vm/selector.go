@@ -8,13 +8,14 @@ type Selector interface {
 	Select(*SolutionList) *SolutionList
 }
 
-type MultiSelector []Selector
+type AndSelector []Selector
 
-func NewMultiSelector(selectors... Selector) MultiSelector {
-	return MultiSelector(selectors)
+func AndSelect(selectors ...Selector) *AndSelector {
+	x := AndSelector(selectors)
+	return &x
 }
 
-func (multi MultiSelector) Select(s *SolutionList) *SolutionList {
+func (multi AndSelector) Select(s *SolutionList) *SolutionList {
 	solutions := make(SolutionList, 0)
 	for _, x := range multi {
 		solutions = append(solutions, *(x).Select(s)...)
@@ -22,16 +23,34 @@ func (multi MultiSelector) Select(s *SolutionList) *SolutionList {
 	return &solutions
 }
 
-func All(selectors... Selector) MultiSelector {
-	return MultiSelector(selectors)
+func (multi *AndSelector) AddSelector(s Selector) {
+	(*multi) = append(*multi, s)
 }
 
-func (multi *MultiSelector) AddSelector(s *Selector) {
-	(*multi) = append(*multi, *s)
+type OrSelector []Selector
+
+func OrSelect(selectors ...Selector) *OrSelector {
+	x := OrSelector(selectors)
+	return &x
+}
+
+func (multi OrSelector) Select(s *SolutionList) *SolutionList {
+	for _, x := range multi {
+		solution := (x).Select(s)
+		if len(*solution) > 0 {
+			return solution
+		}
+	}
+	return nil
+
 }
 
 type TopXSelector struct {
 	Keep int
+}
+
+func TopX(keep int) *TopXSelector {
+	return &TopXSelector{keep}
 }
 
 func (topx TopXSelector) Select(s *SolutionList) *SolutionList {
@@ -61,35 +80,39 @@ func (sel StochasticUniversalSelector) Select(s *SolutionList) *SolutionList {
 	for i := 0; i < n; i++ {
 		pointers[i] = start + i*p
 	}
-	ret := RWS(*s, pointers)
-	return &ret
+	ret := RWS(s, pointers)
+	return ret
 }
 
-func RWS(solutions SolutionList, pointers []int) SolutionList {
+func RWS(solutions *SolutionList, pointers []int) *SolutionList {
 	keep := make(SolutionList, len(pointers))
 	i := 0
 	for _, p := range pointers {
-		for int(solutions[i].Reward) < p {
+		for int((*solutions)[i].Reward) < p {
 			i++
 		}
-		keep = append(keep, solutions[i])
+		keep = append(keep, (*solutions)[i])
 	}
-	return keep
+	return &keep
 }
 
 type TournamentSelector struct {
 	Keep int
 }
 
+func Tournament(keep int) TournamentSelector {
+	return TournamentSelector{keep}
+}
+
 func (t TournamentSelector) Select(solutions *SolutionList) *SolutionList {
 	keepers := make(SolutionList, t.Keep)
 	for x := 0; x < t.Keep; x++ {
-		keepers = append(keepers, Tournament((*solutions)[rng.Int()%len(*solutions)], (*solutions)[rng.Int()%len(*solutions)]))
+		keepers = append(keepers, FightInTournament((*solutions)[rng.Int()%len(*solutions)], (*solutions)[rng.Int()%len(*solutions)]))
 	}
 	return &keepers
 }
 
-func Tournament(warrior1 *Solution, warrior2 *Solution) *Solution {
+func FightInTournament(warrior1 *Solution, warrior2 *Solution) *Solution {
 	var highest, lowest *Solution
 	if warrior1.Reward >= warrior2.Reward {
 		highest, lowest = warrior1, warrior2

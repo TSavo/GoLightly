@@ -11,9 +11,9 @@ type Breeder interface {
 
 type MultiBreeder []Breeder
 
-func NewMultiBreeder(breeders... Breeder) MultiBreeder {
+func Breeders(breeders... Breeder) *MultiBreeder {
 	out := MultiBreeder(breeders)
-	return out
+	return &out
 }
 
 func (multi MultiBreeder) Breed(seeds []string) []string {

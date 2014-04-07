@@ -6,23 +6,17 @@ import (
 	"time"
 )
 
-const (
-	MAX_COST = 300
-	MIN_COST = 25
-)
-
 type ProcessorCore struct {
 	*InstructionSet
-	Registers          Memory
-	CallStack          Memory
-	Heap               *Memory
-	Stack              Memory
-	InstructionPointer int
-	cost               int64
-	Program            *Program
-	ControlChan        chan bool
-	StartTime          int64
-	TerminationCondition      *TerminationCondition
+	Registers            Memory
+	CallStack            Memory
+	Heap                 *Memory
+	Stack                Memory
+	InstructionPointer   int
+	cost                 int64
+	Program              *Program
+	StartTime            int64
+	TerminationCondition *TerminationCondition
 }
 
 func (p *ProcessorCore) Cost() int64 {
@@ -72,7 +66,6 @@ func NewProcessorCore(registers int, instructions *InstructionSet, heap *Memory,
 	} else {
 		p.InstructionSet = instructions
 	}
-	p.ControlChan = make(chan bool, 1)
 	return p
 }
 

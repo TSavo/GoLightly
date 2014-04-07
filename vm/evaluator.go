@@ -34,7 +34,7 @@ type InverseEvaluator struct {
 	Evaluator
 }
 
-func NewInverseEvaluator(e *Evaluator) *InverseEvaluator {
+func Inverse(e *Evaluator) *InverseEvaluator {
 	return &InverseEvaluator{*e}
 }
 

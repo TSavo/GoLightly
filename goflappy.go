@@ -262,21 +262,20 @@ func CollectBest(solverReportChan chan *vm.SolverReport, populationInfluxChan ch
 	}
 }
 
-
 type FlappyBreeder struct {
 	PopulationSize int
 }
 
 func (flap FlappyBreeder) Breed(seeds []string) []string {
-	progs := make([]string, 10)
+	progs := make([]string, flap.PopulationSize)
 	for i, _ := range progs {
 		progs[i] = GenerateProgram()
 	}
 	return progs
 }
 
-func GetFlappyBreeder() FlappyBreeder {
-	return FlappyBreeder{}
+func GetFlappyBreeder(size int) FlappyBreeder {
+	return FlappyBreeder{size}
 }
 
 func GenerateProgram() string {
@@ -310,14 +309,14 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	h.register <- c
 	defer func() { h.unregister <- c }()
 	go c.writer()
+	heap := make(vm.Memory, 8)
 	outChan := make(chan bool, 1)
 	is := DefineInstructions(outChan)
 	terminationCondition := vm.NewChannelTerminationCondition()
-	br := &FlappyBreeder{25}
-	breeder := vm.NewMultiBreeder(GetFlappyBreeder(), vm.NewRandomBreeder(25, 50, is), vm.NewMutationBreeder(25, 0.1, is), vm.NewCrossoverBreeder(25))
+	breeder := vm.Breeders(vm.NewCopyBreeder(15), FlappyBreeder{10}, vm.NewRandomBreeder(25, 50, is), vm.NewMutationBreeder(25, 0.1, is), vm.NewCrossoverBreeder(25))
 	flappyEval := new(FlappyEvaluator)
-	selector := vm.And(vm.NewTopXSelector(10), vm.NewTournamantSelector(10))
-	solver := vm.NewSolver(id, 4, is, terminationCondition, &breeder, flappyEval, selector)
+	selector := vm.AndSelect(vm.TopX(10), vm.Tournament(10))
+	solver := vm.NewSolver(id, &heap, 4, is, terminationCondition, breeder, flappyEval, selector)
 	id++
 	go func() {
 		for {
@@ -328,13 +327,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	inFlap := make(chan string, 1000)
-	heap := make(vm.Memory, 8)
-	control := make(chan bool, 1)
+	
 	go func() {
 		for {
 			flap := <-inFlap
 			if flap == "DEAD" {
-				control <- false
+				*terminationCondition <- true
 				continue
 			}
 			myX := 0
@@ -347,13 +345,13 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			flappyEval.reward += int64(1000 - intutil.Abs(1000-myX))
 		}
 	}()
-	stopChan := make(chan bool, 1)
+	
 	go func() {
-		solver.SolveOneAtATime(&heap, nil, SolverReportChan, control, stopChan, populationInfluxChan, nil)
+		solver.SolveOneAtATime()
 	}()
 
 	c.reader(inFlap)
-	stopChan <- false
+	solver.ControlChan <- true
 }
 
 func loadProgram(projectName string, id int) vm.Program {
