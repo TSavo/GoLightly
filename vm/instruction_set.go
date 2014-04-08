@@ -12,7 +12,7 @@ type Operation struct {
 }
 
 func (o Operation) String() string {
-	return fmt.Sprintf("%v %v, %v\n", o.Instruction.Name, o.Data.Get(0), o.Data.Get(1))
+	return fmt.Sprintf("%v %v, %v", o.Instruction.Name, o.Data.Get(0), o.Data.Get(1))
 }
 
 func (o Operation) Similar(p Operation) bool {

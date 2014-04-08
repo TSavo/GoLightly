@@ -66,6 +66,7 @@ func NewProcessorCore(registers int, instructions *InstructionSet, heap *Memory,
 	} else {
 		p.InstructionSet = instructions
 	}
+	p.Heap = heap
 	return p
 }
 
