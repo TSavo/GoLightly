@@ -1,9 +1,8 @@
-== About GoVirtual ==
+#GoVirtual
 
 GoVirtual is a lightweight virtual machine toolkit implemented in Go, designed for flexibility and reuse.
 
-Processors
-==========
+##Processors
 
 GoVirtual provides a general purpose 'Processor' which supports a user extensible instruction set. An instruction set is a set of instructions which the processor is able to execute.
 
@@ -15,8 +14,7 @@ The processor has support for several blocks of memory: local or 'register' memo
 
 Support for compilation of textual representations of programs is included, but the supported grammar is limited to a single 'assembly-like' form. This allows users to write programs in separate files, and 'load' them into the processor's program space for execution.
 
-InstructionSet
-==============
+##InstructionSet
 
 Since the instruction set is extensible, complex operations can be supported by the addition of an instruction by the user, allowing the Processor to interact with the outside world in whatever way user intends.
 
