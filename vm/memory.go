@@ -48,9 +48,7 @@ func (m Memory) Get(i int) int {
 		i *= -1
 	}
 	i = i % l
-	defer func() {
-		recover()
-	}()
+	defer recover()
 	return m[i]
 }
 
@@ -63,9 +61,7 @@ func (m Memory) Set(i int, x int) {
 		i *= -1
 	}
 	i = i % l
-	defer func() {
-		recover()
-	}()
+	defer recover()
 	m[i] = x
 }
 
