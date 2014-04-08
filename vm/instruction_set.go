@@ -75,9 +75,7 @@ func (i *InstructionSet) Encode(m *Memory) *Operation {
 	return i.Assemble(m.Get(0)%i.Len(), &Memory{m.Get(1), m.Get(2)})
 }
 
-func (s *InstructionSet) RandomOperation() *Operation {
-	return s.Encode(&Memory{rng.Int(), rng.Int(), rng.Int()})
-}
+
 
 func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
 	for x, n := range *i {
