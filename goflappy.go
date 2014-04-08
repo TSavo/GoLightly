@@ -140,7 +140,7 @@ func handleConnection(conn *net.Conn, SolverReportChan *chan *vm.SolverReport) {
 		var one []byte
 		(*conn).SetReadDeadline(time.Now())
 		if _, err := (*conn).Read(one); err == io.EOF {
-			fmt.Println("%s detected closed LAN connection")
+			fmt.Println("Detected closed LAN connection")
 			(*conn).Close()
 			(*conn) = nil
 			break
@@ -294,7 +294,7 @@ func GenerateProgram() string {
 }
 
 var id = 0
-var populationInfluxChan chan []string = make(chan []string, 100)
+var populationInfluxChan vm.InfluxBreeder = make(vm.InfluxBreeder, 100)
 var SolverReportChan chan *vm.SolverReport = make(chan *vm.SolverReport, 100)
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -313,7 +313,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	outChan := make(chan bool, 1)
 	is := DefineInstructions(outChan)
 	terminationCondition := vm.NewChannelTerminationCondition()
-	breeder := vm.Breeders(vm.NewCopyBreeder(15), FlappyBreeder{10}, vm.NewRandomBreeder(25, 50, is), vm.NewMutationBreeder(25, 0.1, is), vm.NewCrossoverBreeder(25))
+	breeder := vm.Breeders(populationInfluxChan, vm.NewCopyBreeder(15), FlappyBreeder{10}, vm.NewRandomBreeder(25, 50, is), vm.NewMutationBreeder(25, 0.1, is), vm.NewCrossoverBreeder(25))
 	flappyEval := new(FlappyEvaluator)
 	selector := vm.AndSelect(vm.TopX(10), vm.Tournament(10))
 	solver := vm.NewSolver(id, &heap, 4, is, terminationCondition, breeder, flappyEval, selector)
