@@ -18,7 +18,19 @@ Support for compilation of textual representations of programs is included, but 
 
 Since the instruction set is extensible, complex operations can be supported by the addition of an instruction by the user, allowing the Processor to interact with the outside world in whatever way user intends.
 
+Each instruction defined has a unique name, an associated function to execute, and a value to add to the current instruction pointer after execution called 'movement' (usually 0 in the case of an operation that changes the instruction pointer like a 'jump', or 1 to just execute the next instruction). The method signature for those functions accepts a pointer to a processor core, and a pointer to some memory for the operands, so it looks like this:
 
+```go
+func(*vm.ProcessorCore, *vm.Memory)
+
+```
+
+You can define a new instruction by calling .Define(name string, movement int, closure func(*ProcessorCore, *Memory)). For instance the definition of a 'do nothing' instruction would look like this:
+
+```go
+is := make(vm.InstructionSet)
+is.Define("noop", 1, func(*vm.ProcessorCore, *vm.Memory){})
+```
 
 Firstly GoLightly provides support for vector instructions allowing each virtual processor to handle
 large data sets more efficiently than in traditional VM designs. Not only is this a boon for fast
