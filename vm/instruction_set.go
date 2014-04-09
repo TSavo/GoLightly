@@ -75,8 +75,6 @@ func (i *InstructionSet) Encode(m *Memory) *Operation {
 	return i.Assemble(m.Get(0)%i.Len(), &Memory{m.Get(1), m.Get(2)})
 }
 
-
-
 func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
 	for x, n := range *i {
 		if n.Name == name {
