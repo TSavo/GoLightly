@@ -6,7 +6,7 @@ import (
 )
 
 type TerminationCondition interface {
-	ShouldTerminate(*ProcessorCore) bool
+	ShouldTerminate(*Processor) bool
 }
 
 type AndTerminationCondition []TerminationCondition
@@ -31,7 +31,7 @@ func NotTerminate(term *TerminationCondition) *NotTerminationCondition {
 	return &NotTerminationCondition{term}
 }
 
-func (term AndTerminationCondition) ShouldTerminate(p *ProcessorCore) bool {
+func (term AndTerminationCondition) ShouldTerminate(p *Processor) bool {
 	for _, x := range term {
 		if !x.ShouldTerminate(p) {
 			return false
@@ -40,7 +40,7 @@ func (term AndTerminationCondition) ShouldTerminate(p *ProcessorCore) bool {
 	return true
 }
 
-func (term OrTerminationCondition) ShouldTerminate(p *ProcessorCore) bool {
+func (term OrTerminationCondition) ShouldTerminate(p *Processor) bool {
 	for _, x := range term {
 		if x.ShouldTerminate(p) {
 			return true
@@ -49,7 +49,7 @@ func (term OrTerminationCondition) ShouldTerminate(p *ProcessorCore) bool {
 	return false
 }
 
-func (term *NotTerminationCondition) ShouldTerminate(p *ProcessorCore) bool {
+func (term *NotTerminationCondition) ShouldTerminate(p *Processor) bool {
 	return !(*(*term).NotCondition).ShouldTerminate(p)
 }
 
@@ -61,7 +61,7 @@ func NewCostTerminationCondition(maxCost int64) *CostTerminationCondition {
 	return &CostTerminationCondition{maxCost}
 }
 
-func (term CostTerminationCondition) ShouldTerminate(p *ProcessorCore) bool {
+func (term CostTerminationCondition) ShouldTerminate(p *Processor) bool {
 	return term.MaxCost < p.Cost()
 }
 
@@ -74,7 +74,7 @@ func NewTimeTerminationCondition(maxTime int64) *TimeTerminationCondition {
 	return &TimeTerminationCondition{maxTime}
 }
 
-func (term TimeTerminationCondition) ShouldTerminate(p *ProcessorCore) bool {
+func (term TimeTerminationCondition) ShouldTerminate(p *Processor) bool {
 	return term.MaxTime > time.Now().UnixNano()-p.StartTime
 }
 
@@ -85,7 +85,7 @@ func NewChannelTerminationCondition() *ChannelTerminationCondition {
 	return &x
 }
 
-func (term *ChannelTerminationCondition) ShouldTerminate(p *ProcessorCore) bool {
+func (term *ChannelTerminationCondition) ShouldTerminate(p *Processor) bool {
 	select {
 	case x := <-(*term):
 		return x

@@ -31,7 +31,7 @@ type Instruction struct {
 	id       int
 	Name     string
 	Movement int
-	Closure  func(*ProcessorCore, *Memory)
+	Closure  func(*Processor, *Memory)
 }
 
 func (i Instruction) String() string {
@@ -53,14 +53,14 @@ func (i *InstructionSet) Exists(name int) bool {
 	_, ok := (*i)[name]
 	return ok
 }
-func (i *InstructionSet) Define(name string, movement int, closure func(*ProcessorCore, *Memory)) {
+func (i *InstructionSet) Define(name string, movement int, closure func(*Processor, *Memory)) {
 	id := i.Len()
 	(*i)[id] = &Instruction{id: id, Name: name, Movement: movement, Closure: closure}
 }
-func (i *InstructionSet) Movement(name string, closure func(*ProcessorCore, *Memory)) {
+func (i *InstructionSet) Movement(name string, closure func(*Processor, *Memory)) {
 	i.Define(name, 0, closure)
 }
-func (i *InstructionSet) Operator(name string, closure func(*ProcessorCore, *Memory)) {
+func (i *InstructionSet) Operator(name string, closure func(*Processor, *Memory)) {
 	i.Define(name, 1, closure)
 }
 
