@@ -1,6 +1,6 @@
 //	TODO:	Rewrite Transform to run in parallel
 
-package vm
+package govirtual
 
 type Program []*Operation
 

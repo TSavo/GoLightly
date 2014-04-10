@@ -1,4 +1,4 @@
-package vm
+package govirtual
 
 type Memory []int
 
