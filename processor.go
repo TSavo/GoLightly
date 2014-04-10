@@ -16,10 +16,10 @@ type Processor struct {
 	Heap                 *Memory
 	Stack                Memory
 	InstructionPointer   int
-	cost                 int64
 	Program              *Program
 	StartTime            int64
 	TerminationCondition *TerminationCondition
+	cost                 int64
 }
 
 
@@ -74,6 +74,8 @@ func NewProcessor(registers int, instructions *InstructionSet, heap *Memory, sto
 	} else {
 		p.InstructionSet = instructions
 	}
+	p.Stack = make(Memory, 0)
+	p.CallStack = make(Memory, 0)
 	p.Heap = heap
 	return p
 }
