@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type ProcessorCore struct {
+type Processor struct {
 	*InstructionSet
 	Registers            Memory
 	CallStack            Memory
@@ -19,15 +19,15 @@ type ProcessorCore struct {
 	TerminationCondition *TerminationCondition
 }
 
-func (p *ProcessorCore) Cost() int64 {
+func (p *Processor) Cost() int64 {
 	progLen := int64(len(*p.Program))
 	cost := p.cost
 	return cost + progLen + int64(p.Stack.Len()+p.CallStack.Len())
 
 }
 
-func (p *ProcessorCore) String() string {
-	return fmt.Sprintf("ProcessorCore [Registers: %v, Heap: %v, Instruction Pointer: %d Cost: %d]",
+func (p *Processor) String() string {
+	return fmt.Sprintf("Processor [Registers: %v, Heap: %v, Instruction Pointer: %d Cost: %d]",
 		p.Registers,
 		//p.CallStack,
 		p.Heap,
@@ -36,12 +36,12 @@ func (p *ProcessorCore) String() string {
 		p.Cost())
 }
 
-func (t *ProcessorCore) Call(location int) {
+func (t *Processor) Call(location int) {
 	t.CallStack.Push(t.InstructionPointer)
 	t.Jump(location)
 }
 
-func (t *ProcessorCore) Return() {
+func (t *Processor) Return() {
 	if t.CallStack.Len() > 0 {
 		t.InstructionPointer, _ = t.CallStack.Pop()
 	}
@@ -49,7 +49,7 @@ func (t *ProcessorCore) Return() {
 
 }
 
-func (t *ProcessorCore) Jump(jump int) {
+func (t *Processor) Jump(jump int) {
 	t.InstructionPointer = jump
 	if t.InstructionPointer < 0 {
 		t.InstructionPointer = 0
@@ -57,8 +57,8 @@ func (t *ProcessorCore) Jump(jump int) {
 	t.InstructionPointer = t.InstructionPointer % len(*t.Program)
 }
 
-func NewProcessorCore(registers int, instructions *InstructionSet, heap *Memory, stop *TerminationCondition) *ProcessorCore {
-	p := new(ProcessorCore)
+func NewProcessor(registers int, instructions *InstructionSet, heap *Memory, stop *TerminationCondition) *Processor {
+	p := new(Processor)
 	p.TerminationCondition = stop
 	p.Registers = make(Memory, registers)
 	if instructions == nil {
@@ -70,28 +70,28 @@ func NewProcessorCore(registers int, instructions *InstructionSet, heap *Memory,
 	return p
 }
 
-func (p *ProcessorCore) LoadProgram(program *Program) {
+func (p *Processor) LoadProgram(program *Program) {
 	pr := make(Program, len(*program))
 	p.Program = &pr
 	copy(*p.Program, *program)
 }
 
-func (p *ProcessorCore) CompileAndLoad(prog string) {
+func (p *Processor) CompileAndLoad(prog string) {
 	p.LoadProgram(p.InstructionSet.CompileProgram(prog))
 }
 
-func (p *ProcessorCore) GetProgramString() string {
+func (p *Processor) GetProgramString() string {
 	return p.Program.Decompile()
 }
 
-func (p *ProcessorCore) Reset() {
+func (p *Processor) Reset() {
 	p.Registers.Zero()
 	p.CallStack.Reallocate(0)
 	p.InstructionPointer = 0
 	p.cost = 0
 }
 
-func (p *ProcessorCore) Execute() {
+func (p *Processor) Execute() {
 	if len(*p.Program) == 0 {
 		return
 	}
@@ -105,7 +105,7 @@ func (p *ProcessorCore) Execute() {
 	p.InstructionPointer += opcode.Instruction.Movement
 }
 
-func (p *ProcessorCore) Run() {
+func (p *Processor) Run() {
 	p.StartTime = time.Now().UnixNano()
 	for {
 		runtime.Gosched()
