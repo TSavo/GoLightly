@@ -1,5 +1,7 @@
 #GoVirtual
 
+[![Build Status](https://drone.io/github.com/TSavo/GoVirtual/status.png)](https://drone.io/github.com/TSavo/GoVirtual/latest)
+
 GoVirtual is a virtual machine toolkit implemented in Go, designed for flexibility and reuse.
 
 Out of the box it provides all the tools necessary to construct a working CPU architecture entirely in software and run programs on that architecture. It can be used as a rapid prototyping environment for CPU architectures, emulation of existing architectures, or as a learning tool for CPU design. 
