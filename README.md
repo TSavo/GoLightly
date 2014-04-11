@@ -1,6 +1,6 @@
 #GoVirtual
 
-[![Build Status](https://drone.io/github.com/TSavo/GoVirtual/status.png)](https://drone.io/github.com/TSavo/GoVirtual/latest)
+[![Build Status](https://drone.io/github.com/TSavo/GoVirtual/status.png)](https://drone.io/github.com/TSavo/GoVirtual/latest) [![Coverage Status](https://coveralls.io/repos/TSavo/GoVirtual/badge.png)](https://coveralls.io/r/TSavo/GoVirtual)
 
 GoVirtual is a virtual machine toolkit implemented in Go, designed for flexibility and reuse.
 
