@@ -60,7 +60,7 @@ func (i *InstructionSet) Define(name string, movement int, closure func(*Process
 func (i *InstructionSet) Movement(name string, closure func(*Processor, *Memory)) {
 	i.Define(name, 0, closure)
 }
-func (i *InstructionSet) Operator(name string, closure func(*Processor, *Memory)) {
+func (i *InstructionSet) Instruction(name string, closure func(*Processor, *Memory)) {
 	i.Define(name, 1, closure)
 }
 

@@ -6,14 +6,15 @@ import (
 	"time"
 )
 
-//A Processor contains an instruction set, some memory, a Program, an Instruction Pointer 
-//(an index for where in the program it is), and a Termination Condition which 
+//A Processor contains an instruction set, some memory, a Program, an Instruction Pointer
+//(an index for where in the program it is), and a Termination Condition which
 //let's it know when to stop.
 type Processor struct {
 	*InstructionSet
 	Registers            Memory
 	CallStack            Memory
 	Heap                 *Memory
+	FloatHeap            *FloatMemory
 	Stack                Memory
 	InstructionPointer   int
 	Program              *Program
@@ -21,7 +22,6 @@ type Processor struct {
 	TerminationCondition *TerminationCondition
 	cost                 int64
 }
-
 
 //A Processor's cost is the number of operations it's executed + the program length + the stack length + the call stack length
 func (p *Processor) Cost() int64 {
@@ -32,10 +32,11 @@ func (p *Processor) Cost() int64 {
 }
 
 func (p *Processor) String() string {
-	return fmt.Sprintf("Processor [Registers: %v, Heap: %v, Instruction Pointer: %d Cost: %d]",
+	return fmt.Sprintf("Processor [Registers: %v, Heap: %v, FloatHeap: %v, Instruction Pointer: %d, Cost: %d]",
 		p.Registers,
 		//p.CallStack,
 		p.Heap,
+		p.FloatHeap,
 		//p.Stack,
 		p.InstructionPointer,
 		p.Cost())
