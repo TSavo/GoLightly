@@ -66,7 +66,7 @@ func (t *Processor) Return() {
 }
 
 //Create a new Processor with a memory of length 'registers', an instruction set, a heap, and a termination condition
-func NewProcessor(registers int, instructions *InstructionSet, heap *Memory, stop *TerminationCondition) *Processor {
+func NewProcessor(registers int, instructions *InstructionSet, heap *Memory, floatHeap *FloatMemory, stop *TerminationCondition) *Processor {
 	p := new(Processor)
 	p.TerminationCondition = stop
 	p.Registers = make(Memory, registers)
@@ -78,6 +78,7 @@ func NewProcessor(registers int, instructions *InstructionSet, heap *Memory, sto
 	p.Stack = make(Memory, 0)
 	p.CallStack = make(Memory, 0)
 	p.Heap = heap
+	p.FloatHeap = floatHeap
 	return p
 }
 

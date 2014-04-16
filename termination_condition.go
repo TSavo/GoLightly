@@ -2,7 +2,6 @@ package govirtual
 
 import (
 	"time"
-	"fmt"
 )
 
 type TerminationCondition interface {
@@ -33,7 +32,7 @@ func NotTerminate(term *TerminationCondition) *NotTerminationCondition {
 
 func (term AndTerminationCondition) ShouldTerminate(p *Processor) bool {
 	for _, x := range term {
-		if !x.ShouldTerminate(p) {
+		if !(x).ShouldTerminate(p) {
 			return false
 		}
 	}
@@ -42,7 +41,7 @@ func (term AndTerminationCondition) ShouldTerminate(p *Processor) bool {
 
 func (term OrTerminationCondition) ShouldTerminate(p *Processor) bool {
 	for _, x := range term {
-		if x.ShouldTerminate(p) {
+		if (x).ShouldTerminate(p) {
 			return true
 		}
 	}
@@ -66,16 +65,20 @@ func (term CostTerminationCondition) ShouldTerminate(p *Processor) bool {
 }
 
 type TimeTerminationCondition struct {
-	MaxTime int64
+	MaxTime time.Duration
+	StartTime int64
 }
 
-func NewTimeTerminationCondition(maxTime int64) *TimeTerminationCondition {
-	fmt.Println(maxTime)
-	return &TimeTerminationCondition{maxTime}
+func NewTimeTerminationCondition(maxTime time.Duration) *TimeTerminationCondition {
+	return &TimeTerminationCondition{maxTime, time.Now().UnixNano()}
+}
+
+func (term *TimeTerminationCondition) Reset() {
+	term.StartTime = time.Now().UnixNano()
 }
 
 func (term TimeTerminationCondition) ShouldTerminate(p *Processor) bool {
-	return term.MaxTime > time.Now().UnixNano()-p.StartTime
+	return int64(term.MaxTime) + term.StartTime < time.Now().UnixNano()
 }
 
 type ChannelTerminationCondition chan bool

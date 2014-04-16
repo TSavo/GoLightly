@@ -12,7 +12,7 @@ type Operation struct {
 }
 
 func (o Operation) String() string {
-	return fmt.Sprintf("%v %v, %v", o.Instruction.Name, o.Data.Get(0), o.Data.Get(1))
+	return fmt.Sprintf("%v %v,%v,%v", o.Instruction.Name, o.Data.Get(0), o.Data.Get(1), o.Data.Get(2))
 }
 
 func (o Operation) Similar(p Operation) bool {
@@ -20,7 +20,7 @@ func (o Operation) Similar(p Operation) bool {
 }
 
 func (o *Operation) Decode() *Memory {
-	return &Memory{o.Instruction.id, o.Data.Get(0), o.Data.Get(1)}
+	return &Memory{o.Instruction.id, o.Data.Get(0), o.Data.Get(1), o.Data.Get(2)}
 }
 
 type Assembler interface {
@@ -78,7 +78,7 @@ func (i *InstructionSet) Encode(m *Memory) *Operation {
 func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
 	for x, n := range *i {
 		if n.Name == name {
-			return i.Encode(&Memory{x, mem.Get(0), mem.Get(1)})
+			return i.Encode(&Memory{x, mem.Get(0), mem.Get(1), mem.Get(2)})
 		}
 	}
 	panic("No such instruction")
@@ -92,8 +92,10 @@ func (i *InstructionSet) Compile(name string, args ...int) (o *Operation) {
 		o = i.CompileMemory(name, &Memory{args[0], 0})
 	case 2:
 		o = i.CompileMemory(name, &Memory{args[0], args[1]})
+	case 3:
+		o = i.CompileMemory(name, &Memory{args[0], args[1], args[2]})
 	default:
-		panic("Arguments > 2 is not supported")
+		panic("Arguments > 3 is not supported")
 	}
 	return
 }
@@ -112,16 +114,19 @@ func (i *InstructionSet) CompileProgram(s string) *Program {
 			if len(c) == 1 {
 				arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
 				p = append(p, i.Compile(o[0], arg0))
-			} else {
+			} else if len(c) == 2 {
 				arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
 				arg1, _ := strconv.Atoi(strings.TrimSpace(c[1]))
 				p = append(p, i.Compile(o[0], arg0, arg1))
+			}else {
+				arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
+				arg1, _ := strconv.Atoi(strings.TrimSpace(c[1]))
+				arg2, _ := strconv.Atoi(strings.TrimSpace(c[2]))
+				p = append(p, i.Compile(o[0], arg0, arg1, arg2))
+			
 			}
 		} else {
-			c := strings.Split(o[1], ",")
-			arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
-			arg1, _ := strconv.Atoi(strings.TrimSpace(o[2]))
-			p = append(p, i.Compile(o[0], arg0, arg1))
+			panic("Don't know how to compile" + x)
 		}
 	}
 	return &p
