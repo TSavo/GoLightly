@@ -72,7 +72,7 @@ func (i *InstructionSet) Assemble(id int, data *Memory) *Operation {
 }
 
 func (i *InstructionSet) Encode(m *Memory) *Operation {
-	return i.Assemble(m.Get(0)%i.Len(), &Memory{m.Get(1), m.Get(2)})
+	return i.Assemble(m.Get(0)%i.Len(), &Memory{m.Get(1), m.Get(2), m.Get(3)})
 }
 
 func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
@@ -111,20 +111,11 @@ func (i *InstructionSet) CompileProgram(s string) *Program {
 			p = append(p, i.Compile(o[0]))
 		} else if len(o) == 2 {
 			c := strings.Split(o[1], ",")
-			if len(c) == 1 {
-				arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
-				p = append(p, i.Compile(o[0], arg0))
-			} else if len(c) == 2 {
-				arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
-				arg1, _ := strconv.Atoi(strings.TrimSpace(c[1]))
-				p = append(p, i.Compile(o[0], arg0, arg1))
-			}else {
-				arg0, _ := strconv.Atoi(strings.TrimSpace(c[0]))
-				arg1, _ := strconv.Atoi(strings.TrimSpace(c[1]))
-				arg2, _ := strconv.Atoi(strings.TrimSpace(c[2]))
-				p = append(p, i.Compile(o[0], arg0, arg1, arg2))
-			
+			args := make([]int, len(c))
+			for x, _ := range c {
+				args[x], _ = strconv.Atoi(c[x])
 			}
+			p = append(p, i.Compile(o[0], args...))
 		} else {
 			panic("Don't know how to compile" + x)
 		}

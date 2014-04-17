@@ -65,7 +65,7 @@ func (term CostTerminationCondition) ShouldTerminate(p *Processor) bool {
 }
 
 type TimeTerminationCondition struct {
-	MaxTime time.Duration
+	MaxTime   time.Duration
 	StartTime int64
 }
 
@@ -77,8 +77,13 @@ func (term *TimeTerminationCondition) Reset() {
 	term.StartTime = time.Now().UnixNano()
 }
 
-func (term TimeTerminationCondition) ShouldTerminate(p *Processor) bool {
-	return int64(term.MaxTime) + term.StartTime < time.Now().UnixNano()
+func (term *TimeTerminationCondition) ShouldTerminate(p *Processor) bool {
+	if int64(term.MaxTime)+term.StartTime < time.Now().UnixNano() {
+		term.StartTime = time.Now().UnixNano()
+		return true
+	} else {
+		return false
+	}
 }
 
 type ChannelTerminationCondition chan bool
