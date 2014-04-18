@@ -87,11 +87,11 @@ func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
 func (i *InstructionSet) Compile(name string, args ...int) (o *Operation) {
 	switch len(args) {
 	case 0:
-		o = i.CompileMemory(name, &Memory{0, 0})
+		o = i.CompileMemory(name, &Memory{0, 0, 0})
 	case 1:
-		o = i.CompileMemory(name, &Memory{args[0], 0})
+		o = i.CompileMemory(name, &Memory{args[0], 0, 0})
 	case 2:
-		o = i.CompileMemory(name, &Memory{args[0], args[1]})
+		o = i.CompileMemory(name, &Memory{args[0], args[1], 0})
 	case 3:
 		o = i.CompileMemory(name, &Memory{args[0], args[1], args[2]})
 	default:
@@ -113,7 +113,7 @@ func (i *InstructionSet) CompileProgram(s string) *Program {
 			c := strings.Split(o[1], ",")
 			args := make([]int, len(c))
 			for x, _ := range c {
-				args[x], _ = strconv.Atoi(c[x])
+				args[x], _ = strconv.Atoi(strings.TrimSpace(c[x]))
 			}
 			p = append(p, i.Compile(o[0], args...))
 		} else {
