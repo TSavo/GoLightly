@@ -92,6 +92,16 @@ func EmulationInstructions(i *InstructionSet) {
 	i.Instruction("subtract", func(p *Processor, m *Memory) {
 		p.Registers.Set((*m).Get(0), p.Registers.Get((*m).Get(0))-p.Registers.Get((*m).Get(1)))
 	})
+	i.Instruction("abs", func(p *Processor, m *Memory) {
+		p.Registers.Set((*m).Get(0), Abs(p.Registers.Get((*m).Get(0))))
+	})
+}
+
+func Abs(abs int) int {
+	if abs < 0 {
+		return abs * -1
+	}
+	return abs
 }
 
 func FloatMathInstructions(is *InstructionSet) {

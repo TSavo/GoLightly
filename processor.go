@@ -10,6 +10,7 @@ import (
 //(an index for where in the program it is), and a Termination Condition which
 //let's it know when to stop.
 type Processor struct {
+	Id int
 	*InstructionSet
 	Registers            Memory
 	CallStack            Memory
@@ -66,8 +67,9 @@ func (t *Processor) Return() {
 }
 
 //Create a new Processor with a memory of length 'registers', an instruction set, a heap, and a termination condition
-func NewProcessor(registers int, instructions *InstructionSet, heap *Memory, floatHeap *FloatMemory, stop *TerminationCondition) *Processor {
+func NewProcessor(id int, registers int, instructions *InstructionSet, heap *Memory, floatHeap *FloatMemory, stop *TerminationCondition) *Processor {
 	p := new(Processor)
+	p.Id = id
 	p.TerminationCondition = stop
 	p.Registers = make(Memory, registers)
 	if instructions == nil {
