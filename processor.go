@@ -15,45 +15,68 @@ type Processor struct {
 	Registers            Memory
 	CallStack            Memory
 	Heap                 *Memory
-	FloatHeap            *FloatMemory
 	Stack                Memory
 	InstructionPointer   int
 	Program              *Program
-	StartTime            int64
+	StartTime            int
 	TerminationCondition *TerminationCondition
-	cost                 int64
+	cost                 int
 }
 
 //A Processor's cost is the number of operations it's executed + the program length + the stack length + the call stack length
-func (p *Processor) Cost() int64 {
-	progLen := int64(len(*p.Program))
+func (p *Processor) Cost() int {
+	progLen := p.Len()
 	cost := p.cost
-	return cost + progLen + int64(p.Stack.Len()+p.CallStack.Len())
+	return cost + progLen + p.Stack.Len() + p.CallStack.Len()
 
 }
 
 func (p *Processor) String() string {
-	return fmt.Sprintf("Processor [Registers: %v, Heap: %v, FloatHeap: %v, Instruction Pointer: %d, Cost: %d]",
+	return fmt.Sprintf("Processor [Registers: %v, Heap: %v, Instruction Pointer: %d, Cost: %d]",
 		p.Registers,
 		//p.CallStack,
 		p.Heap,
-		p.FloatHeap,
 		//p.Stack,
 		p.InstructionPointer,
 		p.Cost())
 }
 
-//Change the instruction pointer to the specified index
-func (t *Processor) Jump(jump int) {
+func (t *Processor) SetInstructionPointer(jump int) {
 	t.InstructionPointer = jump
 	if t.InstructionPointer < 0 {
 		t.InstructionPointer = 0
 	}
-	t.InstructionPointer = t.InstructionPointer % len(*t.Program)
+	t.InstructionPointer = t.InstructionPointer % t.Program.Len()
+}
+
+//Change the instruction pointer to the specified index
+func (t *Processor) Jump(jump interface{}) {
+	switch j := jump.(type) {
+	case int:
+		t.SetInstructionPointer(j)
+	case float64:
+		t.SetInstructionPointer(int(j))
+	case string:
+		t.JumpLabel(j)
+	default:
+		panic(fmt.Sprintf("Don't know how to jump to %v", j))
+	}
+}
+
+func (t *Processor) JumpLabel(label string) {
+	start := t.InstructionPointer
+	for i := 0; i < t.Program.Len(); i++ {
+		x := (i + start) % t.Program.Len()
+		if t.Program.Get(x).Label == label {
+			t.InstructionPointer = x
+			return
+		}
+	}
+	t.InstructionPointer = (t.InstructionPointer + 1) % t.Program.Len()
 }
 
 //Push the current instruction pointer onto the call stack, and jump to the location in the program specified.
-func (t *Processor) Call(location int) {
+func (t *Processor) Call(location interface{}) {
 	t.CallStack.Push(t.InstructionPointer)
 	t.Jump(location)
 }
@@ -61,13 +84,14 @@ func (t *Processor) Call(location int) {
 //Pop the top of the call stack, and jump to that value.
 func (t *Processor) Return() {
 	if t.CallStack.Len() > 0 {
-		t.InstructionPointer, _ = t.CallStack.Pop()
+		x, _ := t.CallStack.Pop()
+		t.InstructionPointer = Cardinalize(x)
 	}
 	t.InstructionPointer++
 }
 
 //Create a new Processor with a memory of length 'registers', an instruction set, a heap, and a termination condition
-func NewProcessor(id int, registers int, instructions *InstructionSet, heap *Memory, floatHeap *FloatMemory, stop *TerminationCondition) *Processor {
+func NewProcessor(id int, registers int, instructions *InstructionSet, heap *Memory, stop *TerminationCondition) *Processor {
 	p := new(Processor)
 	p.Id = id
 	p.TerminationCondition = stop
@@ -80,15 +104,12 @@ func NewProcessor(id int, registers int, instructions *InstructionSet, heap *Mem
 	p.Stack = make(Memory, 0)
 	p.CallStack = make(Memory, 0)
 	p.Heap = heap
-	p.FloatHeap = floatHeap
 	return p
 }
 
 //Load a program into the processor. This has the side effect of setting the instruction pointer to 0.
 func (p *Processor) LoadProgram(program *Program) {
-	pr := make(Program, len(*program))
-	p.Program = &pr
-	copy(*p.Program, *program)
+	p.Program = program.Clone()
 	p.InstructionPointer = 0
 }
 
@@ -113,14 +134,12 @@ func (p *Processor) Reset() {
 
 //Execute the instruction currently pointed at by the Instruction Pointer
 func (p *Processor) Execute() {
-	if len(*p.Program) == 0 {
-		return
+	if p.Program.Len() == 0 {
+		panic("Tried to execute a zero length program.")
 	}
 	x := p.InstructionPointer
-	if x >= len(*p.Program) {
-		x = x % len(*p.Program)
-	}
-	opcode := (*p.Program)[x]
+	x = x % p.Len()
+	opcode := p.Program.Get(x)
 	opcode.Instruction.Closure(p, opcode.Data)
 	p.cost++
 	p.InstructionPointer += opcode.Instruction.Movement
@@ -128,7 +147,7 @@ func (p *Processor) Execute() {
 
 //Start running the program. This won't return until the TerminationCondition.ShouldTerminate() returns true.
 func (p *Processor) Run() {
-	p.StartTime = time.Now().UnixNano()
+	p.StartTime = int(time.Now().UnixNano())
 	for {
 		runtime.Gosched()
 		if (*p.TerminationCondition).ShouldTerminate(p) {

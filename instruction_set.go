@@ -9,9 +9,13 @@ import (
 type Operation struct {
 	Instruction *Instruction
 	Data        *Memory
+	Label       string
 }
 
 func (o Operation) String() string {
+	if len(o.Label) > 0 {
+		return o.Label
+	}
 	return fmt.Sprintf("%v %v,%v,%v", o.Instruction.Name, o.Data.Get(0), o.Data.Get(1), o.Data.Get(2))
 }
 
@@ -32,6 +36,7 @@ type Instruction struct {
 	Name     string
 	Movement int
 	Closure  func(*Processor, *Memory)
+	Format   func(*Memory) string
 }
 
 func (i Instruction) String() string {
@@ -53,15 +58,15 @@ func (i *InstructionSet) Exists(name int) bool {
 	_, ok := (*i)[name]
 	return ok
 }
-func (i *InstructionSet) Define(name string, movement int, closure func(*Processor, *Memory)) {
+func (i *InstructionSet) Define(name string, movement int, closure func(*Processor, *Memory), format func(*Memory) string) {
 	id := i.Len()
-	(*i)[id] = &Instruction{id: id, Name: name, Movement: movement, Closure: closure}
+	(*i)[id] = &Instruction{id: id, Name: name, Movement: movement, Closure: closure, Format: format}
 }
-func (i *InstructionSet) Movement(name string, closure func(*Processor, *Memory)) {
-	i.Define(name, 0, closure)
+func (i *InstructionSet) Movement(name string, closure func(*Processor, *Memory), format func(*Memory) string) {
+	i.Define(name, 0, closure, format)
 }
-func (i *InstructionSet) Instruction(name string, closure func(*Processor, *Memory)) {
-	i.Define(name, 1, closure)
+func (i *InstructionSet) Instruction(name string, closure func(*Processor, *Memory), format func(*Memory) string) {
+	i.Define(name, 1, closure, format)
 }
 
 func (i *InstructionSet) Assemble(id int, data *Memory) *Operation {
@@ -72,7 +77,7 @@ func (i *InstructionSet) Assemble(id int, data *Memory) *Operation {
 }
 
 func (i *InstructionSet) Encode(m *Memory) *Operation {
-	return i.Assemble(m.Get(0)%i.Len(), &Memory{m.Get(1), m.Get(2), m.Get(3)})
+	return i.Assemble(m.GetCardinal(0)%i.Len(), &Memory{m.Get(1), m.Get(2), m.Get(3)})
 }
 
 func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
@@ -81,10 +86,16 @@ func (i *InstructionSet) CompileMemory(name string, mem *Memory) *Operation {
 			return i.Encode(&Memory{x, mem.Get(0), mem.Get(1), mem.Get(2)})
 		}
 	}
-	panic("No such instruction")
+	panic("No such instruction " + name)
 }
 
-func (i *InstructionSet) Compile(name string, args ...int) (o *Operation) {
+func (i *InstructionSet) CompileLabel(label string) *Operation {
+	o := i.CompileMemory("noop", &Memory{0, 0, 0})
+	o.Label = label
+	return o
+}
+
+func (i *InstructionSet) Compile(name string, args ...interface{}) (o *Operation) {
 	switch len(args) {
 	case 0:
 		o = i.CompileMemory(name, &Memory{0, 0, 0})
@@ -100,25 +111,61 @@ func (i *InstructionSet) Compile(name string, args ...int) (o *Operation) {
 	return
 }
 
-func (i *InstructionSet) CompileProgram(s string) *Program {
-	p := make(Program, 0)
-	for _, x := range strings.Split(s, "\n") {
-		o := strings.Split(x, " ")
-		if len(strings.TrimSpace(o[0])) == 0 {
-			continue
-		}
-		if len(o) == 1 {
-			p = append(p, i.Compile(o[0]))
-		} else if len(o) == 2 {
-			c := strings.Split(o[1], ",")
-			args := make([]int, len(c))
-			for x, _ := range c {
-				args[x], _ = strconv.Atoi(strings.TrimSpace(c[x]))
-			}
-			p = append(p, i.Compile(o[0], args...))
-		} else {
-			panic("Don't know how to compile" + x)
+func UnlabelProgram(program string) (string, map[string]int) {
+	prog, labels := UnlabelProgramRecurse(strings.Split(program, "\n"), make(map[string]int))
+	return strings.Join(prog, "\n"), labels
+}
+
+func UnlabelProgramRecurse(program []string, labels map[string]int) ([]string, map[string]int) {
+	for x, line := range program {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, ":") {
+			labels[line] = x
+			return UnlabelProgramRecurse(append(program[:x], program[x+1:]...), labels)
 		}
 	}
-	return &p
+	return program, labels
+}
+
+func Coherse(arg string) interface{} {
+	if strings.HasPrefix(arg, ":") {
+		return arg
+	} else {
+		if strings.Contains(arg, ".") {
+			n, _ := strconv.ParseFloat(arg, 64)
+			return n
+		} else {
+			n, _ := strconv.Atoi(arg)
+			return n
+		}
+	}
+}
+
+func (i *InstructionSet) CompileProgram(s string) *Program {
+	p := NewProgram(0)
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+		if strings.HasPrefix(line, ":") {
+			p.Append(i.CompileLabel(line))
+			continue
+		}
+		o := strings.Split(line, " ")
+
+		if len(o) == 1 {
+			p.Append(i.Compile(o[0]))
+		} else if len(o) == 2 {
+			c := strings.Split(o[1], ",")
+			args := make([]interface{}, len(c))
+			for x, arg := range c {
+				args[x] = Coherse(arg)
+			}
+			p.Append(i.Compile(o[0], args...))
+		} else {
+			panic("Don't know how to compile" + line)
+		}
+	}
+	return p
 }

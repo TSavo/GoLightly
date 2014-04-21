@@ -1,35 +1,78 @@
 package govirtual
 
-type Memory []int
+import (
+	"hash/crc32"
+)
 
-type FloatMemory []float64
-
-func NewFloatMemory(size int) *FloatMemory {
-	f := make(FloatMemory, size)
-	for x, _ := range f {
-		f[x] = 0.0
+func Dereference(value interface{}) interface{} {
+	x, ok := value.(Pointer)
+	if ok {
+		return Dereference(x.Get())
 	}
-	return &f
+	return value
+}
+
+type Pointer interface {
+	Get() interface{}
+	Set(interface{})
+}
+
+type VariablePointer struct {
+	Pointer
+	Name string
+}
+
+func (v *VariablePointer) Get() interface{} {
+	return v.Pointer.Get()
+}
+
+func (v *VariablePointer) Set(value interface{}) {
+	v.Pointer.Set(value)
+}
+
+func (v *VariablePointer) String() string {
+	return v.Name
+}
+
+type Memory []interface{}
+
+type MemoryPointer struct {
+	Memory
+	Index interface{}
+	Name  string
+}
+
+func (memory *MemoryPointer) Get() interface{} {
+	return memory.Memory.Get(memory.Index)
+}
+
+func (memory *MemoryPointer) Set(value interface{}) {
+	memory.Memory.Set(memory.Index, value)
+}
+
+func (memory *MemoryPointer) String() string {
+	return memory.Name
+}
+
+func Cardinalize(in interface{}) int {
+	in = Dereference(in)
+	switch x := in.(type) {
+	case int:
+		return x
+	case float64:
+		return int(x)
+	case string:
+		return int(crc32.ChecksumIEEE([]byte(x)))
+	default:
+		return 0
+	}
 }
 
 func (m *Memory) Push(p int) {
 	*m = append(*m, p)
 }
 
-func (m *FloatMemory) Push(p float64) {
-	*m = append(*m, p)
-}
-
-func (s *Memory) Pop() (r int, ok bool) {
-	if end := s.Len() - 1; end > -1 {
-		r = (*s)[end]
-		*s = (*s)[:end]
-		ok = true
-	}
-	return
-}
-
-func (s *FloatMemory) Pop() (r float64, ok bool) {
+func (s *Memory) Pop() (r interface{}, ok bool) {
 	if end := s.Len() - 1; end > -1 {
 		r = (*s)[end]
 		*s = (*s)[:end]
@@ -47,23 +90,8 @@ func (s *Memory) Delete(i int) {
 	}
 }
 
-func (s *FloatMemory) Delete(i int) {
-	a := *s
-	n := len(a)
-	if i > -1 && i < n {
-		copy(a[i:n-1], a[i+1:n])
-		*s = a[:n-1]
-	}
-}
-
 func (s *Memory) Resize(size int) {
 	n := make(Memory, size, size)
-	copy(n, (*s))
-	*s = n
-}
-
-func (s *FloatMemory) Resize(size int) {
-	n := make(FloatMemory, size, size)
 	copy(n, (*s))
 	*s = n
 }
@@ -73,126 +101,52 @@ func (m *Memory) Len() (l int) {
 	return
 }
 
-func (m *FloatMemory) Len() (l int) {
-	l = len(*m)
-	return
-}
-
-func (m *Memory) Get(i int) int {
+func (m *Memory) Get(i interface{}) interface{} {
+	x := Cardinalize(i)
 	l := m.Len()
 	if l < 1 {
 		panic("Memory is of size < 1")
 	}
-	if i < 0 {
-		i *= -1
+	if x < 0 {
+		x *= -1
 	}
-	i = i % l
+	x = x % l
 	defer recover()
-	return (*m)[i]
+	return (*m)[x]
 }
 
-func (m *FloatMemory) Get(i int) float64 {
+func (m *Memory) GetCardinal(i interface{}) int {
+	return Cardinalize(m.Get(i))
+}
+
+func (m *Memory) Set(i interface{}, x interface{}) {
+	xx := Cardinalize(i)
 	l := m.Len()
 	if l < 1 {
 		panic("Memory is of size < 1")
 	}
-	if i < 0 {
-		i *= -1
+	if xx < 0 {
+		xx *= -1
 	}
-	i = i % l
+	xx = xx % l
 	defer recover()
-	return (*m)[i]
-}
-
-func (m *Memory) Set(i int, x int) {
-	l := m.Len()
-	if l < 1 {
-		panic("Memory is of size < 1")
-	}
-	if i < 0 {
-		i *= -1
-	}
-	i = i % l
-	defer recover()
-	(*m)[i] = x
-}
-
-func (m *FloatMemory) Set(i int, x float64) {
-	l := m.Len()
-	if l < 1 {
-		panic("Memory is of size < 1")
-	}
-	if i < 0 {
-		i *= -1
-	}
-	i = i % l
-	defer recover()
-	(*m)[i] = x
-}
-
-func (m *Memory) Increment(i int) {
-	m.Set(i, m.Get(i)+1)
-}
-
-func (m *Memory) Decrement(i int) {
-	m.Set(i, m.Get(i)-1)
-}
-
-func (m *Memory) Zero() {
-	for i := 0; i < m.Len(); i++ {
-		m.Set(i, 0)
-	}
-}
-
-func (m *FloatMemory) Zero() {
-	for i := 0; i < m.Len(); i++ {
-		(*m)[i]=0.0
-	}
+	(*m)[xx] = x
 }
 
 func (m *Memory) Reallocate(size int) {
 	(*m) = make(Memory, size)
 }
 
-func (m *FloatMemory) Reallocate(size int) {
-	*m = *NewFloatMemory(size)
-}
-
 func (s *Memory) Append(v interface{}) {
-	switch v := v.(type) {
-	case int:
-		*s = append(*s, v)
-	case Memory:
-		*s = append(*s, v...)
-	case []int:
-		s.Append(Memory(v))
-	default:
-		panic(v)
-	}
-}
-
-func (m *FloatMemory) Append(v interface{}) {
-	switch v := v.(type) {
-	case float64:
-		*m = append(*m, v)
-	case FloatMemory:
-		*m = append(*m, v...)
-	case []float64:
-		m.Append(FloatMemory(v))
-	default:
-		panic(v)
-	}
+	*s = append(*s, v)
 }
 
 func (s *Memory) Prepend(v interface{}) {
-	switch v := v.(type) {
-	case int:
-		*s = append([]int{v}, *s...)
-	case Memory:
-		*s = append(v, *s...)
-	case []int:
-		s.Prepend(Memory(v))
-	default:
-		panic(v)
+	*s = append([]interface{}{v}, *s...)
+}
+
+func (s *Memory) Zero() {
+	for x := 0; x < s.Len(); x++ {
+		(*s)[x] = 0
 	}
 }
