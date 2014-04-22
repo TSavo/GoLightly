@@ -4,12 +4,22 @@ import (
 	"hash/crc32"
 )
 
-func Dereference(value interface{}) interface{} {
-	x, ok := value.(Pointer)
-	if ok {
-		return Dereference(x.Get())
+func CompletelyDereference(value interface{}) interface{} {
+	switch x := value.(type) {
+	case Pointer:
+		return CompletelyDereference(x.Get())
+	default:
+		return x
 	}
-	return value
+}
+
+func Dereference(value interface{}) interface{} {
+	switch x := value.(type) {
+	case Pointer:
+		return x.Get()
+	default:
+		return x
+	}
 }
 
 type Pointer interface {
@@ -17,45 +27,82 @@ type Pointer interface {
 	Set(interface{})
 }
 
-type VariablePointer struct {
+type Variable struct {
 	Pointer
 	Name string
 }
 
-func (v *VariablePointer) Get() interface{} {
+func (variable *Variable) Get() interface{} {
+	return variable.Value.Get()
+}
+
+func (variable *Variable) Set(value interface{}) {
+	variable.Value.Set(value)
+}
+
+func (variable *Variable) String() string {
+	return variable.Name
+}
+
+type Literal struct {
+	Value interface{}
+}
+
+func (literal *Literal) Get() interface{} {
+	return literal.Value
+}
+
+func (literal *Literal) Set(value interface{}) {
+	literal.Value = value
+}
+
+func (literal *Literal) String() string {
+	switch x := literal.Value.(type) {
+	case string:
+		return fmt.Sprintf("\"%v\"", literal.Value)	
+	default:
+		return fmt.Sprintf("%v", literal.Value)
+	}
+	
+}
+
+type Reference struct {
+	Pointer
+}
+
+func (v *Reference) Get() interface{} {
 	return v.Pointer.Get()
 }
 
-func (v *VariablePointer) Set(value interface{}) {
+func (v *Reference) Set(value interface{}) {
 	v.Pointer.Set(value)
 }
 
-func (v *VariablePointer) String() string {
-	return v.Name
+func (v *Reference) String() string {
+	return fmt.Sprintf("&%v", v.Pointer)
 }
 
-type Memory []interface{}
+type Memory []Pointer
 
 type MemoryPointer struct {
-	Memory
+	*Memory
 	Index interface{}
 	Name  string
 }
 
 func (memory *MemoryPointer) Get() interface{} {
-	return memory.Memory.Get(memory.Index)
+	return memory.Memory.Get(memory.Index).Get()
 }
 
 func (memory *MemoryPointer) Set(value interface{}) {
-	memory.Memory.Set(memory.Index, value)
+	memory.Memory.Get(memory.Index).Set(value)
 }
 
 func (memory *MemoryPointer) String() string {
-	return memory.Name
+	return fmt.Sprintf("%s[%d]", memory.Name, memory.Index)
 }
 
 func Cardinalize(in interface{}) int {
-	in = Dereference(in)
 	switch x := in.(type) {
 	case int:
 		return x
@@ -63,6 +110,8 @@ func Cardinalize(in interface{}) int {
 		return int(x)
 	case string:
 		return int(crc32.ChecksumIEEE([]byte(x)))
+	case Pointer:
+		return Cardinalize(x.Get())
 	default:
 		return 0
 	}
@@ -101,7 +150,7 @@ func (m *Memory) Len() (l int) {
 	return
 }
 
-func (m *Memory) Get(i interface{}) interface{} {
+func (m *Memory) Get(i interface{}) Pointer {
 	x := Cardinalize(i)
 	l := m.Len()
 	if l < 1 {
@@ -119,7 +168,7 @@ func (m *Memory) GetCardinal(i interface{}) int {
 	return Cardinalize(m.Get(i))
 }
 
-func (m *Memory) Set(i interface{}, x interface{}) {
+func (m *Memory) Set(i interface{}, x *Pointer) {
 	xx := Cardinalize(i)
 	l := m.Len()
 	if l < 1 {

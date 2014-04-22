@@ -6,17 +6,25 @@ import (
 	"strings"
 )
 
+type Expression interface {
+	Evaluate(Processor, ... Pointer) 
+}
+
 type Operation struct {
 	Instruction *Instruction
 	Data        *Memory
 	Label       string
+	Infix       bool
 }
 
 func (o Operation) String() string {
 	if len(o.Label) > 0 {
 		return o.Label
 	}
-	return fmt.Sprintf("%v %v,%v,%v", o.Instruction.Name, o.Data.Get(0), o.Data.Get(1), o.Data.Get(2))
+	if o.Infix {
+		return fmt.Sprintf("%v %v %v", o.Data.Get(0), o.Instruction.Name, o.Data.Get(1))
+	}
+	return fmt.Sprintf("%v(%v)", o.Instruction.Name, o.Data.Get(0), o.Data.Get(1), o.Data.Get(2))
 }
 
 func (o Operation) Similar(p Operation) bool {
@@ -31,12 +39,16 @@ type Assembler interface {
 	Assemble(name string, data *Memory) Operation
 }
 
+type Argument struct {
+	Name, Type string
+}
+
 type Instruction struct {
-	id       int
-	Name     string
-	Movement int
-	Closure  func(*Processor, *Memory)
-	Format   func(*Memory) string
+	id        int
+	Name      string
+	Movement  int
+	Closure   func(*Processor, *Memory)
+	Arguments []Argument
 }
 
 func (i Instruction) String() string {
@@ -54,10 +66,6 @@ func (i *InstructionSet) Len() int {
 	return len(*i)
 }
 
-func (i *InstructionSet) Exists(name int) bool {
-	_, ok := (*i)[name]
-	return ok
-}
 func (i *InstructionSet) Define(name string, movement int, closure func(*Processor, *Memory), format func(*Memory) string) {
 	id := i.Len()
 	(*i)[id] = &Instruction{id: id, Name: name, Movement: movement, Closure: closure, Format: format}
