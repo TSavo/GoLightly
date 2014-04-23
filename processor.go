@@ -58,26 +58,25 @@ func (t *Processor) Jump(jump interface{}) {
 		t.SetInstructionPointer(int(j))
 	case string:
 		t.JumpLabel(j)
+	case Pointer:
+		t.Jump(j.Get())
 	default:
 		panic(fmt.Sprintf("Don't know how to jump to %v", j))
 	}
 }
 
 func (t *Processor) JumpLabel(label string) {
-	start := t.InstructionPointer
-	for i := 0; i < t.Program.Len(); i++ {
-		x := (i + start) % t.Program.Len()
-		if t.Program.Get(x).Label == label {
-			t.InstructionPointer = x
-			return
+	defer func(){
+		if recover() != nil {
+			t.InstructionPointer++
 		}
-	}
-	t.InstructionPointer = (t.InstructionPointer + 1) % t.Program.Len()
+	}()
+	t.InstructionPointer = t.Program.Labels()[label][0]
 }
 
 //Push the current instruction pointer onto the call stack, and jump to the location in the program specified.
 func (t *Processor) Call(location interface{}) {
-	t.CallStack.Push(t.InstructionPointer)
+	t.CallStack.Push(&Literal{t.InstructionPointer})
 	t.Jump(location)
 }
 
@@ -115,7 +114,7 @@ func (p *Processor) LoadProgram(program *Program) {
 
 //Compile a program from a string and load it into the processor.
 func (p *Processor) CompileAndLoad(prog string) {
-	p.LoadProgram(p.InstructionSet.CompileProgram(prog))
+	p.LoadProgram(p.InstructionSet.CompileProgram(prog, p.Heap))
 }
 
 //Decompile the program on the processor into a string.
@@ -126,6 +125,7 @@ func (p *Processor) GetProgramString() string {
 //Zero the registers, reset the stack and the call stack, and set the cost and instruction pointer to 0
 func (p *Processor) Reset() {
 	p.Registers.Zero()
+	p.Heap.Zero()
 	p.CallStack.Reallocate(0)
 	p.Stack.Reallocate(0)
 	p.InstructionPointer = 0
@@ -135,12 +135,12 @@ func (p *Processor) Reset() {
 //Execute the instruction currently pointed at by the Instruction Pointer
 func (p *Processor) Execute() {
 	if p.Program.Len() == 0 {
-		panic("Tried to execute a zero length program.")
+		return
 	}
 	x := p.InstructionPointer
-	x = x % p.Len()
+	x = x % p.Program.Len()
 	opcode := p.Program.Get(x)
-	opcode.Instruction.Closure(p, opcode.Data)
+	opcode.Instruction.Closure(p, *opcode.Data...)
 	p.cost++
 	p.InstructionPointer += opcode.Instruction.Movement
 }
@@ -151,6 +151,9 @@ func (p *Processor) Run() {
 	for {
 		runtime.Gosched()
 		if (*p.TerminationCondition).ShouldTerminate(p) {
+			return
+		}
+		if p.Program.Len() == 0 {
 			return
 		}
 		p.Execute()

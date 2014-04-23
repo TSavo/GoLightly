@@ -2,6 +2,8 @@ package govirtual
 
 import (
 	"hash/crc32"
+	"fmt"
+	"strings"
 )
 
 func CompletelyDereference(value interface{}) interface{} {
@@ -33,11 +35,11 @@ type Variable struct {
 }
 
 func (variable *Variable) Get() interface{} {
-	return variable.Value.Get()
+	return variable.Pointer.Get()
 }
 
 func (variable *Variable) Set(value interface{}) {
-	variable.Value.Set(value)
+	variable.Pointer.Set(value)
 }
 
 func (variable *Variable) String() string {
@@ -59,9 +61,13 @@ func (literal *Literal) Set(value interface{}) {
 func (literal *Literal) String() string {
 	switch x := literal.Value.(type) {
 	case string:
-		return fmt.Sprintf("\"%v\"", literal.Value)	
+		if(strings.HasPrefix(x, ":")) {
+			return x
+		}else{
+			return fmt.Sprintf("\"%v\"", x)
+		}	
 	default:
-		return fmt.Sprintf("%v", literal.Value)
+		return fmt.Sprintf("%v", x)
 	}
 	
 }
@@ -102,6 +108,10 @@ func (memory *MemoryPointer) String() string {
 	return fmt.Sprintf("%s[%d]", memory.Name, memory.Index)
 }
 
+func Booleanize(in interface{}) bool {
+	return Cardinalize(in) % 2 == 0
+}
+
 func Cardinalize(in interface{}) int {
 	switch x := in.(type) {
 	case int:
@@ -117,7 +127,7 @@ func Cardinalize(in interface{}) int {
 	}
 }
 
-func (m *Memory) Push(p int) {
+func (m *Memory) Push(p Pointer) {
 	*m = append(*m, p)
 }
 
@@ -168,7 +178,7 @@ func (m *Memory) GetCardinal(i interface{}) int {
 	return Cardinalize(m.Get(i))
 }
 
-func (m *Memory) Set(i interface{}, x *Pointer) {
+func (m *Memory) Set(i interface{}, x Pointer) {
 	xx := Cardinalize(i)
 	l := m.Len()
 	if l < 1 {
@@ -186,16 +196,16 @@ func (m *Memory) Reallocate(size int) {
 	(*m) = make(Memory, size)
 }
 
-func (s *Memory) Append(v interface{}) {
+func (s *Memory) Append(v Pointer) {
 	*s = append(*s, v)
 }
 
-func (s *Memory) Prepend(v interface{}) {
-	*s = append([]interface{}{v}, *s...)
+func (s *Memory) Prepend(v Pointer) {
+	*s = append([]Pointer{v}, *s...)
 }
 
 func (s *Memory) Zero() {
 	for x := 0; x < s.Len(); x++ {
-		(*s)[x] = 0
+		(*s)[x] = &Literal{0}
 	}
 }
