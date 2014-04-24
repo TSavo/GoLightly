@@ -161,7 +161,7 @@ func (i *InstructionSet) CompileProgram(s string, heap *Memory) *Program {
 			}
 			p.Append(i.Compile(o[0], args...))
 		} else {
-			panic("Don't know how to compile" + line)
+			//panic("Don't know how to compile" + line)
 		}
 	}
 	return p
