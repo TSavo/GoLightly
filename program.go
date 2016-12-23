@@ -1,5 +1,3 @@
-//	TODO:	Rewrite Transform to run in parallel
-
 package govirtual
 
 type Program struct {

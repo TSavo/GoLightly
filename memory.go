@@ -1,8 +1,8 @@
 package govirtual
 
 import (
-	"hash/crc32"
 	"fmt"
+	"hash/crc32"
 	"strings"
 )
 
@@ -61,15 +61,15 @@ func (literal *Literal) Set(value interface{}) {
 func (literal *Literal) String() string {
 	switch x := literal.Value.(type) {
 	case string:
-		if(strings.HasPrefix(x, ":")) {
+		if strings.HasPrefix(x, ":") {
 			return x
-		}else{
+		} else {
 			return fmt.Sprintf("\"%v\"", x)
-		}	
+		}
 	default:
 		return fmt.Sprintf("%v", x)
 	}
-	
+
 }
 
 type Reference struct {
@@ -109,7 +109,7 @@ func (memory *MemoryPointer) String() string {
 }
 
 func Booleanize(in interface{}) bool {
-	return Cardinalize(in) % 2 == 0
+	return Cardinalize(in)%2 == 0
 }
 
 func Cardinalize(in interface{}) int {

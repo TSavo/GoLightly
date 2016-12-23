@@ -24,7 +24,7 @@ func (o Operation) String() string {
 	if o.Infix {
 		return fmt.Sprintf("%v %v %v", o.Data.Get(0), o.Instruction.Name, o.Data.Get(1))
 	}
-	return fmt.Sprintf("%v(%v)", o.Instruction.Name, o.Data.Get(0), o.Data.Get(1), o.Data.Get(2))
+	return fmt.Sprintf("%v(%v)", o.Instruction.Name, o.Data.Get(0))
 }
 
 func (o Operation) Similar(p Operation) bool {
@@ -126,7 +126,7 @@ func Coherse(arg string, heap *Memory) Pointer {
 		index, _ := strconv.Atoi(arg[1:])
 		return &MemoryPointer{heap, index, "#"}
 	} else if strings.HasPrefix(arg, "\"") && strings.HasSuffix(arg, "\"") {
-		return &Literal{arg[1:len(arg)-1]}
+		return &Literal{arg[1 : len(arg)-1]}
 	} else {
 		if strings.Contains(arg, ".") {
 			n, _ := strconv.ParseFloat(arg, 64)

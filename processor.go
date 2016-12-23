@@ -66,7 +66,7 @@ func (t *Processor) Jump(jump interface{}) {
 }
 
 func (t *Processor) JumpLabel(label string) {
-	defer func(){
+	defer func() {
 		if recover() != nil {
 			t.InstructionPointer++
 		}
