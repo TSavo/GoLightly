@@ -7,14 +7,14 @@ import (
 )
 
 type Expression interface {
-	Evaluate(Processor, ...Pointer)
+	Evaluate(Processor, ...Value)
 }
 
 type Operation struct {
 	Instruction *Instruction
-	Data        *Memory
 	Label       string
 	Infix       bool
+	Data        []Value
 }
 
 func (o Operation) String() string {
@@ -22,9 +22,9 @@ func (o Operation) String() string {
 		return o.Label
 	}
 	if o.Infix {
-		return fmt.Sprintf("%v %v %v", o.Data.Get(0), o.Instruction.Name, o.Data.Get(1))
+		return fmt.Sprintf("%v %v %v", o.Data[0], o.Instruction.Name, o.Data[1])
 	}
-	return fmt.Sprintf("%v(%v)", o.Instruction.Name, o.Data.Get(0))
+	return fmt.Sprintf("%v(%v)", o.Instruction.Name, o.Data)
 }
 
 func (o Operation) Similar(p Operation) bool {
@@ -39,15 +39,14 @@ type Argument struct {
 	Name, Type string
 }
 
-type Closure func(*Processor, ...Pointer) Memory
+type Closure func(*Processor, ...Value) []Value
 
 type Instruction struct {
 	id        int
 	Name      string
-	Movement  int
 	Closure   Closure
-	Arguments []Argument
 	Infix     bool
+	Arguments []Argument
 }
 
 func (i Instruction) String() string {
@@ -65,30 +64,29 @@ func (i *InstructionSet) Len() int {
 	return len(*i)
 }
 
-func (i *InstructionSet) Define(name string, movement int, infix bool, closure Closure, args ...Argument) {
+func (i *InstructionSet) Define(name string,  infix bool, closure Closure, args ...Argument) {
 	id := i.Len()
-	(*i)[id] = &Instruction{id: id, Name: name, Movement: movement, Closure: closure, Infix: infix, Arguments: args}
+	(*i)[id] = &Instruction{id: id, Name: name, Closure: closure, Infix: infix, Arguments: args}
 }
 func (i *InstructionSet) Movement(name string, closure Closure, args ...Argument) {
-	i.Define(name, 0, false, closure, args...)
+	i.Define(name,  false, closure, args...)
 }
 func (i *InstructionSet) Instruction(name string, closure Closure, args ...Argument) {
-	i.Define(name, 1, false, closure, args...)
+	i.Define(name,  false, closure, args...)
 }
 
 func (i *InstructionSet) Infix(name string, closure Closure, left Argument, right Argument) {
-	i.Define(name, 1, true, closure, left, right)
+	i.Define(name, true, closure, left, right)
 }
 
-func (i *InstructionSet) Assemble(id int, args ...Pointer) *Operation {
+func (i *InstructionSet) Assemble(id int, args ...Value) *Operation {
 	if op, ok := (*i)[id]; ok {
-		a := Memory(args)
-		return &Operation{Instruction: op, Data: &a}
+		return &Operation{Instruction: op, Data: args}
 	}
 	panic("No such Instruction")
 }
 
-func (i *InstructionSet) Compile(name string, args ...Pointer) *Operation {
+func (i *InstructionSet) Compile(name string, args ...Value) *Operation {
 	for x, n := range *i {
 		if n.Name == name {
 			return i.Assemble(x, args...)
@@ -119,12 +117,11 @@ func UnlabelProgramRecurse(program []string, labels map[string]int) ([]string, m
 	return program, labels
 }
 
-func Coherse(arg string, heap *Memory) Pointer {
+func Coherse(arg string, heap *Memory) Value {
 	if strings.HasPrefix(arg, ":") {
 		return &Literal{arg}
 	} else if strings.HasPrefix(arg, "#") {
-		index, _ := strconv.Atoi(arg[1:])
-		return &MemoryPointer{heap, index, "#"}
+		return &MemoryPointer{heap, arg[1:], "#"}
 	} else if strings.HasPrefix(arg, "\"") && strings.HasSuffix(arg, "\"") {
 		return &Literal{arg[1 : len(arg)-1]}
 	} else {
@@ -155,7 +152,7 @@ func (i *InstructionSet) CompileProgram(s string, heap *Memory) *Program {
 			p.Append(i.Compile(o[0]))
 		} else if len(o) == 2 {
 			c := strings.Split(o[1], ",")
-			args := make([]Pointer, len(c))
+			args := make([]Value, len(c))
 			for x, arg := range c {
 				args[x] = Coherse(arg, heap)
 			}

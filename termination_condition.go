@@ -51,19 +51,6 @@ func (term OrTerminationCondition) ShouldTerminate(p *Processor) bool {
 func (term *NotTerminationCondition) ShouldTerminate(p *Processor) bool {
 	return !(*(*term).NotCondition).ShouldTerminate(p)
 }
-
-type CostTerminationCondition struct {
-	MaxCost int
-}
-
-func NewCostTerminationCondition(maxCost int) *CostTerminationCondition {
-	return &CostTerminationCondition{maxCost}
-}
-
-func (term CostTerminationCondition) ShouldTerminate(p *Processor) bool {
-	return term.MaxCost < p.Cost()
-}
-
 type TimeTerminationCondition struct {
 	MaxTime   time.Duration
 	StartTime int

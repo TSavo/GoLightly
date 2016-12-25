@@ -2,64 +2,55 @@ package govirtual
 
 import (
 	"fmt"
-	"hash/crc32"
 	"strings"
 )
 
-func CompletelyDereference(value interface{}) interface{} {
-	switch x := value.(type) {
-	case Pointer:
-		return CompletelyDereference(x.Get())
-	default:
-		return x
-	}
-}
-
-func Dereference(value interface{}) interface{} {
-	switch x := value.(type) {
-	case Pointer:
-		return x.Get()
-	default:
-		return x
-	}
-}
-
-type Pointer interface {
+//A Value is an allocation of memory of undefined type
+type Value interface {
 	Get() interface{}
 	Set(interface{})
+	String() string
 }
 
+//An Address is something that can be used to address a Value in Memory
+type Address interface{}
+
+//Memory maps Addresses to Values
+type Memory map[Address]Value
+
+// A Variable is a named Value
 type Variable struct {
-	Pointer
+	Value
 	Name string
 }
 
-func (variable *Variable) Get() interface{} {
-	return variable.Pointer.Get()
+func (this *Variable) Get() interface{} {
+	return this.Value.Get()
 }
 
-func (variable *Variable) Set(value interface{}) {
-	variable.Pointer.Set(value)
+func (this *Variable) Set(value interface{}) {
+	this.Value.Set(value)
 }
 
-func (variable *Variable) String() string {
-	return variable.Name
+func (this *Variable) String() string {
+	return this.Name
 }
 
+//A Literal Value
 type Literal struct {
 	Value interface{}
 }
 
-func (literal *Literal) Get() interface{} {
-	return literal.Value
+func (this *Literal) Get() interface{} {
+	return this.Value
 }
 
-func (literal *Literal) Set(value interface{}) {
-	literal.Value = value
+func (this *Literal) Set(value interface{}) {
+	this.Value = value
 }
 
-func (literal *Literal) String() string {
-	switch x := literal.Value.(type) {
+func (this *Literal) String() string {
+	switch x := this.Value.(type) {
 	case string:
 		if strings.HasPrefix(x, ":") {
 			return x
@@ -69,143 +60,68 @@ func (literal *Literal) String() string {
 	default:
 		return fmt.Sprintf("%v", x)
 	}
-
 }
 
+//A Reference points at another value
 type Reference struct {
-	Pointer
+	Value *Value
 }
 
-func (v *Reference) Get() interface{} {
-	return v.Pointer.Get()
+func (this *Reference) Get() interface{} {
+	val := *(this.Value)
+	return val.Get()
 }
 
-func (v *Reference) Set(value interface{}) {
-	v.Pointer.Set(value)
+func (this *Reference) Set(value interface{}) {
+	val := *(this.Value)
+	val.Set(value)
 }
 
-func (v *Reference) String() string {
-	return fmt.Sprintf("&%v", v.Pointer)
+func (this *Reference) String() string {
+	return fmt.Sprintf("&%v", this.Value)
 }
 
-type Memory []Pointer
-
+//A MemoryPointer points at specific Address in Memory
 type MemoryPointer struct {
 	*Memory
-	Index interface{}
-	Name  string
+	Address interface{}
+	Name string
 }
 
-func (memory *MemoryPointer) Get() interface{} {
-	return memory.Memory.Get(memory.Index).Get()
+func (this *MemoryPointer) Get() interface{} {
+	return this.Memory[this.Address]
 }
 
-func (memory *MemoryPointer) Set(value interface{}) {
-	memory.Memory.Get(memory.Index).Set(value)
+func (this *MemoryPointer) Set(value interface{}) {
+	this.Memory[this.Address].Set(value)
 }
 
-func (memory *MemoryPointer) String() string {
-	return fmt.Sprintf("%s[%d]", memory.Name, memory.Index)
+func (this *MemoryPointer) String() string {
+	return fmt.Sprintf("*%v", this.Address)
 }
 
-func Booleanize(in interface{}) bool {
-	return Cardinalize(in)%2 == 0
+func (this *MemoryPointer) Dereference() interface{} {
+	return Dereference(this)
 }
 
-func Cardinalize(in interface{}) int {
-	switch x := in.(type) {
-	case int:
-		return x
-	case float64:
-		return int(x)
-	case string:
-		return int(crc32.ChecksumIEEE([]byte(x)))
-	case Pointer:
-		return Cardinalize(x.Get())
+func (this *MemoryPointer) CompletelyDererence() interface{} {
+	return CompletelyDereference(this)
+}
+
+func CompletelyDereference(value interface{}) interface{} {
+	switch x := value.(type) {
+	case Value:
+		return CompletelyDereference(x.Get())
 	default:
-		return 0
+		return x
 	}
 }
 
-func (m *Memory) Push(p Pointer) {
-	*m = append(*m, p)
-}
-
-func (s *Memory) Pop() (r interface{}, ok bool) {
-	if end := s.Len() - 1; end > -1 {
-		r = (*s)[end]
-		*s = (*s)[:end]
-		ok = true
-	}
-	return
-}
-
-func (s *Memory) Delete(i int) {
-	a := *s
-	n := len(a)
-	if i > -1 && i < n {
-		copy(a[i:n-1], a[i+1:n])
-		*s = a[:n-1]
-	}
-}
-
-func (s *Memory) Resize(size int) {
-	n := make(Memory, size, size)
-	copy(n, (*s))
-	*s = n
-}
-
-func (m *Memory) Len() (l int) {
-	l = len(*m)
-	return
-}
-
-func (m *Memory) Get(i interface{}) Pointer {
-	x := Cardinalize(i)
-	l := m.Len()
-	if l < 1 {
-		panic("Memory is of size < 1")
-	}
-	if x < 0 {
-		x *= -1
-	}
-	x = x % l
-	defer recover()
-	return (*m)[x]
-}
-
-func (m *Memory) GetCardinal(i interface{}) int {
-	return Cardinalize(m.Get(i))
-}
-
-func (m *Memory) Set(i interface{}, x Pointer) {
-	xx := Cardinalize(i)
-	l := m.Len()
-	if l < 1 {
-		panic("Memory is of size < 1")
-	}
-	if xx < 0 {
-		xx *= -1
-	}
-	xx = xx % l
-	defer recover()
-	(*m)[xx] = x
-}
-
-func (m *Memory) Reallocate(size int) {
-	(*m) = make(Memory, size)
-}
-
-func (s *Memory) Append(v Pointer) {
-	*s = append(*s, v)
-}
-
-func (s *Memory) Prepend(v Pointer) {
-	*s = append([]Pointer{v}, *s...)
-}
-
-func (s *Memory) Zero() {
-	for x := 0; x < s.Len(); x++ {
-		(*s)[x] = &Literal{0}
+func Dereference(value interface{}) interface{} {
+	switch x := value.(type) {
+	case Value:
+		return x.Get()
+	default:
+		return x
 	}
 }

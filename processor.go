@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"time"
+	"golang.org/x/tools/go/gcimporter15/testdata"
 )
 
 //A Processor contains an instruction set, some memory, a Program, an Instruction Pointer
@@ -122,27 +123,21 @@ func (p *Processor) GetProgramString() string {
 	return p.Program.Decompile()
 }
 
-//Zero the registers, reset the stack and the call stack, and set the cost and instruction pointer to 0
-func (p *Processor) Reset() {
-	p.Registers.Zero()
-	p.Heap.Zero()
-	p.CallStack.Reallocate(0)
-	p.Stack.Reallocate(0)
-	p.InstructionPointer = 0
-	p.cost = 0
-}
-
 //Execute the instruction currently pointed at by the Instruction Pointer
-func (p *Processor) Execute() {
-	if p.Program.Len() == 0 {
+func (this *Processor) Execute() {
+	if this.Program.Len() == 0 {
 		return
 	}
-	x := p.InstructionPointer
-	x = x % p.Program.Len()
-	opcode := p.Program.Get(x)
-	opcode.Instruction.Closure(p, *opcode.Data...)
-	p.cost++
-	p.InstructionPointer += opcode.Instruction.Movement
+	operation := this.FetchOperation()
+	operation.Instruction.Closure(this, operation.Data...)
+}
+
+func (this *Processor) FetchOperation() *Operation {
+	x := this.InstructionPointer
+	x = x % this.Program.Len()
+	opcode := this.Program.Get(x)
+	this.InstructionPointer += 1
+	return opcode
 }
 
 //Start running the program. This won't return until the TerminationCondition.ShouldTerminate() returns true.

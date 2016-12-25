@@ -29,7 +29,28 @@ It all starts with the memory...
 
 ##Memory
 
-The purpose of any machine is to perform computations on values. Ultimately those values are stored as a series of bits in 'memory'. GoVirtual defines 'memory' as an array of integers ([]int). This simplifies the design because all values in memory are also valid pointers to memory (an int can deference a slice by cardinality). This doesn't mean that VMs can't perform floating point operations, it's just that all internal representations are in int format, so any floating point operations will require a conversion from int when loading from memory, and to int when storing.
+The purpose of any machine is to perform computations on values. Ultimately those values are stored as a series of bits in 'memory'. 
+GoVirtual defines 'memory' as an array of Pointers ([]Pointer), where Pointer is an interface for storing arbitrary values:
+
+```go
+type Pointer interface {
+	Get() interface{}
+	Set(interface{})
+}
+```
+
+What this means is that you're free to define your memory in terms of any architecture definition you want. 
+Traditional architectures typically define their memory in terms of a fixed number of bits at each address space, which we usually call an 'int',
+and this is in fact the most obvious implementation, but there's actually nothing stopping us from doing something really outside the box
+in terms of declaring our memory addresses to be full objects with invokable interfaces and complex state. After all, the only requirement is that
+they are interface{}.
+
+
+
+
+
+
+This simplifies the design because all values in memory are also valid pointers to memory (an int can deference a slice by cardinality). This doesn't mean that VMs can't perform floating point operations, it's just that all internal representations are in int format, so any floating point operations will require a conversion from int when loading from memory, and to int when storing.
 
 The Memory class is defined as:
 
@@ -44,6 +65,33 @@ Other helpful methods are .Resize(size int), which increases or decreases the le
 ##InstructionSet
 
 An 'instruction set' is a set of operations which the processor is able to perform. Instructions can be defined to be anything at all, and are entirely supplied by you, the user. Since the instruction set is extensible, complex operations can be supported by the addition of an instruction that invokes that complex operation, allowing the processor to interact with the outside world in whatever way user intends.
+
+Instructions come in two flavors: Infix, which can have at most two arguments, and prefix, which can have unlimited arguments.
+
+For example, you might have an infix 'add' instruction that takes two literals, and adds them together:
+
+```
+2 add 2
+```
+
+Or perhaps, more familarly, the '+' infix instruction:
+
+```
+2 + 2
+```
+
+Prefix instructions look like function calls, with the arguments being comma seperated within the parentencies. The same add instruction in prefix form would look like:
+
+```
+add(2, 2)
+```
+or
+```
++(2, 2)
+```
+
+
+
 
 Each instruction in the instruction set has a unique name, an associated function to execute, and a value to advance the processor onto the next instruction after execution called 'movement' (usually 0 in the case of an operation that changes the instruction pointer explicitly like a 'jump', or 1 to just execute the next instruction). The method signature for those functions accepts a pointer to a processor core, and a pointer to some memory for the operands, so it looks like this:
 
@@ -73,7 +121,7 @@ So now our instruction set knows what a 'noop' instruction does. But we're still
 To assemble an instruction into an operation, we call upon the instruction set to combine an instruction with a set of 0 or more operands using the 'Compile' method, which has the following signature:
 
 ```go
-func (i *InstructionSet) Compile(name string, args... int) (o *Operation)
+func (index *InstructionSet) Compile(name string, args... int) (o *Operation)
 ```
 
 So to compile that noop instruction into an operation, you would:
