@@ -51,6 +51,7 @@ func (term OrTerminationCondition) ShouldTerminate(p *Processor) bool {
 func (term *NotTerminationCondition) ShouldTerminate(p *Processor) bool {
 	return !(*(*term).NotCondition).ShouldTerminate(p)
 }
+
 type TimeTerminationCondition struct {
 	MaxTime   time.Duration
 	StartTime int

@@ -42,7 +42,6 @@ type Argument struct {
 type Closure func(*Processor, ...Value) []Value
 
 type Instruction struct {
-	id        int
 	Name      string
 	Closure   Closure
 	Infix     bool
@@ -64,15 +63,12 @@ func (i *InstructionSet) Len() int {
 	return len(*i)
 }
 
-func (i *InstructionSet) Define(name string,  infix bool, closure Closure, args ...Argument) {
-	id := i.Len()
-	(*i)[id] = &Instruction{id: id, Name: name, Closure: closure, Infix: infix, Arguments: args}
+func (i *InstructionSet) Define(name string, infix bool, closure Closure, args ...Argument) {
+	(*i)[i.Len()] = &Instruction{Name: name, Closure: closure, Infix: infix, Arguments: args}
 }
-func (i *InstructionSet) Movement(name string, closure Closure, args ...Argument) {
-	i.Define(name,  false, closure, args...)
-}
-func (i *InstructionSet) Instruction(name string, closure Closure, args ...Argument) {
-	i.Define(name,  false, closure, args...)
+
+func (i *InstructionSet) Prefix(name string, closure Closure, args ...Argument) {
+	i.Define(name, false, closure, args...)
 }
 
 func (i *InstructionSet) Infix(name string, closure Closure, left Argument, right Argument) {
@@ -117,11 +113,9 @@ func UnlabelProgramRecurse(program []string, labels map[string]int) ([]string, m
 	return program, labels
 }
 
-func Coherse(arg string, heap *Memory) Value {
+func Coherse(arg string) Value {
 	if strings.HasPrefix(arg, ":") {
 		return &Literal{arg}
-	} else if strings.HasPrefix(arg, "#") {
-		return &MemoryPointer{heap, arg[1:], "#"}
 	} else if strings.HasPrefix(arg, "\"") && strings.HasSuffix(arg, "\"") {
 		return &Literal{arg[1 : len(arg)-1]}
 	} else {
@@ -135,7 +129,7 @@ func Coherse(arg string, heap *Memory) Value {
 	}
 }
 
-func (i *InstructionSet) CompileProgram(s string, heap *Memory) *Program {
+func (i *InstructionSet) CompileProgram(s string) *Program {
 	p := NewProgram(0)
 	for _, line := range strings.Split(s, "\n") {
 		line = strings.TrimSpace(line)
@@ -154,7 +148,7 @@ func (i *InstructionSet) CompileProgram(s string, heap *Memory) *Program {
 			c := strings.Split(o[1], ",")
 			args := make([]Value, len(c))
 			for x, arg := range c {
-				args[x] = Coherse(arg, heap)
+				args[x] = Coherse(arg)
 			}
 			p.Append(i.Compile(o[0], args...))
 		} else {

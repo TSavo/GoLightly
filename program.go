@@ -17,7 +17,7 @@ func (p *Program) Equals(other *Program) bool {
 		return false
 	}
 	for i, x := range p.Operations {
-		if *x != *other.Operations[i] {
+		if x != other.Operations[i] {
 			return false
 		}
 	}
