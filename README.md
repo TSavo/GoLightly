@@ -30,10 +30,10 @@ It all starts with the memory...
 ##Memory
 
 The purpose of any machine is to perform computations on values. Ultimately those values are stored as a series of bits in 'memory'. 
-GoVirtual defines 'memory' as an array of Pointers ([]Pointer), where Pointer is an interface for storing arbitrary values:
+GoVirtual defines 'memory' as a map of `Address` to `Value`, where `Address` is an empty `interface{}` and Value is defined as:
 
 ```go
-type Pointer interface {
+type Value interface {
 	Get() interface{}
 	Set(interface{})
 }
@@ -44,6 +44,8 @@ Traditional architectures typically define their memory in terms of a fixed numb
 and this is in fact the most obvious implementation, but there's actually nothing stopping us from doing something really outside the box
 in terms of declaring our memory addresses to be full objects with invokable interfaces and complex state. After all, the only requirement is that
 they are interface{}.
+
+More importantly, because the structure of memory is unbound, we can use this abstraction to define different logical segments of our memory, such as registers, RAM, ROM, and external devices, simply by using a different addressing scheme for each segment. We could, for instance, define the Value at address 'RAM' as an int[], or we could define 
 
 
 
@@ -89,7 +91,6 @@ or
 ```
 +(2, 2)
 ```
-
 
 
 

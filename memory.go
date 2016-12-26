@@ -9,7 +9,6 @@ import (
 type Value interface {
 	Get() interface{}
 	Set(interface{})
-	String() string
 }
 
 //An Address is something that can be used to address a Value in Memory
