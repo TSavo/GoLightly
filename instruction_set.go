@@ -6,10 +6,6 @@ import (
 	"strings"
 )
 
-type Expression interface {
-	Evaluate(Processor, ...Value)
-}
-
 type Operation struct {
 	Instruction *Instruction
 	Label       string
@@ -39,11 +35,11 @@ type Argument struct {
 	Name, Type string
 }
 
-type Closure func(*Processor, ...Value) []Value
+type Implementation func(*Memory, ...Value) []Value
 
 type Instruction struct {
 	Name      string
-	Closure   Closure
+	Implementation
 	Infix     bool
 	Arguments []Argument
 }
@@ -63,15 +59,15 @@ func (i *InstructionSet) Len() int {
 	return len(*i)
 }
 
-func (i *InstructionSet) Define(name string, infix bool, closure Closure, args ...Argument) {
-	(*i)[i.Len()] = &Instruction{Name: name, Closure: closure, Infix: infix, Arguments: args}
+func (i *InstructionSet) Define(name string, infix bool, implementation Implementation, args ...Argument) {
+	(*i)[i.Len()] = &Instruction{Name: name, Implementation: implementation, Infix: infix, Arguments: args}
 }
 
-func (i *InstructionSet) Prefix(name string, closure Closure, args ...Argument) {
+func (i *InstructionSet) Prefix(name string, closure Implementation, args ...Argument) {
 	i.Define(name, false, closure, args...)
 }
 
-func (i *InstructionSet) Infix(name string, closure Closure, left Argument, right Argument) {
+func (i *InstructionSet) Infix(name string, closure Implementation, left Argument, right Argument) {
 	i.Define(name, true, closure, left, right)
 }
 
